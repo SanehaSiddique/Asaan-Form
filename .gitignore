@@ -1,3 +1,4 @@
 .env
 ./llm_call
 ./faiqa
+faiqa/
