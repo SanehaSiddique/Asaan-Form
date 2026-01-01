@@ -12,13 +12,25 @@ def document_agent(state: AgentState) -> AgentState:
         return state
 
     raw_text = extract_text_from_image(files[0])
+    if(raw_text):
+        print(raw_text)
+    else:
+        print("empty")
+
+    # Guard against empty OCR
+    if not raw_text.strip():
+        return {
+            **state,
+            "raw_text": "",
+            "extracted_json": {"error": "No readable text found in document"},
+        }
 
     prompt = f"""
 You are a document understanding agent.
 
 Convert the following OCR text into clean, structured JSON.
 Use meaningful keys.
-If a value is missing, use null.
+If a value is missing or unreadable, use null.
 
 OCR Text:
 {raw_text}
