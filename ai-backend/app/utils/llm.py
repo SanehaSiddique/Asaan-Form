@@ -9,7 +9,7 @@ def get_llm():
     return ChatOpenAI(
         api_key=os.getenv("OPENROUTER_API_KEY"),
         base_url=os.getenv("OPENROUTER_BASE_URL"),
-        model="openai/gpt-oss-120b:free",
+        model="meta-llama/llama-3.3-70b-instruct:free",
         temperature=0.3,
         default_headers={
             "HTTP-Referer": "http://localhost:8000",
