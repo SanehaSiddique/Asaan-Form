@@ -2,32 +2,50 @@ from langgraph.graph import StateGraph, END
 from app.schemas.state import AgentState
 
 from app.agents.intent_agent import intent_agent
-from app.agents.document_agent import document_agent
+from app.agents.english_ocr_agent import english_ocr_agent
+from app.agents.urdu_ocr_agent import urdu_ocr_agent
+from app.agents.bilingual_merge_agent import bilingual_merge_agent
 
+
+# --------------------------------------------------
+# Intent Router
+# --------------------------------------------------
 def route(state: AgentState):
     if state.get("intent") == "document":
-        return "document_agent"
+        return ["english_ocr", "urdu_ocr"]  # FAN-OUT
     return END
+
 
 def build_graph():
     graph = StateGraph(AgentState)
 
+    # Nodes
     graph.add_node("intent_agent", intent_agent)
-    graph.add_node("document_agent", document_agent)
+    graph.add_node("english_ocr", english_ocr_agent)
+    graph.add_node("urdu_ocr", urdu_ocr_agent)
+    graph.add_node("merge", bilingual_merge_agent)
 
+    # Entry
     graph.set_entry_point("intent_agent")
 
+    # FAN-OUT routing
     graph.add_conditional_edges(
         "intent_agent",
         route,
         {
-            "document_agent": "document_agent",
+            "english_ocr": "english_ocr",
+            "urdu_ocr": "urdu_ocr",
             END: END
         }
     )
 
-    graph.add_edge("document_agent", END)
+    # FAN-IN (join)
+    graph.add_edge("english_ocr", "merge")
+    graph.add_edge("urdu_ocr", "merge")
+
+    graph.add_edge("merge", END)
 
     return graph.compile()
+
 
 main_graph = build_graph()

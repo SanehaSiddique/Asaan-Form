@@ -1,13 +1,18 @@
-from typing import TypedDict, Optional, List, Dict, Any
+from typing import TypedDict, Optional, List, Dict, Any, Annotated
+
+# This function tells LangGraph: "If you get a new value, just overwrite the old one."
+def overwrite(old, new):
+    return new
 
 class AgentState(TypedDict, total=False):
-    # input
-    user_input: Optional[str]
-    files: Optional[List[str]]
+    # Use Annotated with the overwrite function
+    user_input: Annotated[Optional[str], overwrite]
+    files: Annotated[Optional[List[str]], overwrite]
 
     # intent
-    intent: Optional[str]
+    intent: Annotated[Optional[str], overwrite]
 
     # document processing
-    raw_text: Optional[str]
-    extracted_json: Optional[Dict[str, Any]]
+    english_text: Annotated[Optional[str], overwrite]
+    urdu_text: Annotated[Optional[str], overwrite]
+    merged_json: Annotated[Optional[Dict], overwrite]
