@@ -11,6 +11,7 @@ def save_file(file: UploadFile) -> str:
         shutil.copyfileobj(file.file, buffer)
     return path
 
+
 @router.post("/document/intake")
 async def document_intake(
     user_input: str = Form(...),
@@ -20,7 +21,14 @@ async def document_intake(
 
     result = main_graph.invoke({
         "user_input": user_input,
-        "files": [file_path]
+        "files": [file_path],
+        "english_text": None,
+        "urdu_text": None,
+        "merged_json": None
     })
 
-    return result
+    return {
+        "data": result.get("merged_json"),
+        "english_ocr": result.get("english_text"),
+        "urdu_ocr": result.get("urdu_text")
+    }

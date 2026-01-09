@@ -78,7 +78,7 @@ def group_lines(words, boxes, y_thresh=25, x_gap_thresh=80):
         ]
     return lines
 
-def extract_text_from_image(file_path: Path) -> str:
+def extract_english_text(file_path: Path) -> str:
     """
     High-level OCR extraction function.
     Returns concatenated text from the document.
