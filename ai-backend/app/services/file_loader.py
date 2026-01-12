@@ -1,10 +1,23 @@
 import os
+import shutil
 import uuid
+
+from anyio import Path
 import fitz  # pymupdf
 from PIL import Image
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+async def create_user_folder(user_id: str, upload_type: str):
+    """Create user-specific folder structure"""
+    folder_path = Path(UPLOAD_DIR) / user_id / upload_type
+    await folder_path.mkdir(parents=True, exist_ok=True)
+    return folder_path
+async def save_form(file: UploadFile, save_path: Path):
+    """Save uploaded file to disk"""
+    with open(save_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
 def save_upload_file(upload_file) -> str:
     ext = upload_file.filename.split(".")[-1]
