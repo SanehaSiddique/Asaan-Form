@@ -1,7 +1,9 @@
+<<<<<<< HEAD
 # -------- Secrets / Sensitive --------
 .env
 .env.*
 faiqa/
+ai-backend_env/
 
 # -------- Python --------
 __pycache__/
@@ -19,3 +21,20 @@ venv/
 Thumbs.db
 .vscode/
 .idea/
+=======
+# Virtual environments
+asaan-env/
+venv/
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Pip temp folders
+pip-*
+
+# OS / Editor junk
+.vscode/
+.DS_Store
+>>>>>>> master
