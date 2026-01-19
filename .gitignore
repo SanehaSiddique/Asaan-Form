@@ -2,6 +2,7 @@
 asaan-env/
 venv/
 .env
+ai-backend_env/
 
 # Python cache
 __pycache__/

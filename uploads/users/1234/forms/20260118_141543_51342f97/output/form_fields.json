@@ -1,0 +1,779 @@
+{
+  "form_fields": [
+    {
+      "field_name": "Name of School where admission is required",
+      "field_key": "school_name",
+      "field_type": "text_input",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        666.6864827473959,
+        277.0625,
+        652.6683451334635
+      ],
+      "span": {
+        "offset": 0,
+        "length": 43
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Class in which admission is required",
+      "field_key": "class_required",
+      "field_type": "text_input",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        48.34375,
+        640.7116902669271,
+        233.59375,
+        626.28125
+      ],
+      "span": {
+        "offset": 0,
+        "length": 37
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Registration No",
+      "field_key": "registration_no",
+      "field_type": "text_input",
+      "required": true,
+      "validation": "numeric",
+      "coordinates": [
+        48.75,
+        613.5,
+        132.84375,
+        598.6572469075521
+      ],
+      "span": {
+        "offset": 0,
+        "length": 16
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Date of Admission",
+      "field_key": "date_of_admission",
+      "field_type": "date",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        329.46875,
+        613.5,
+        426.5625,
+        599.8941446940104
+      ],
+      "span": {
+        "offset": 0,
+        "length": 18
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Student's Name",
+      "field_key": "student_name",
+      "field_type": "text_input",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        587.5251871744791,
+        135.28125,
+        573.9193522135416
+      ],
+      "span": {
+        "offset": 0,
+        "length": 15
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Gender",
+      "field_key": "gender",
+      "field_type": "checkbox",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        329.0625,
+        587.5251871744791,
+        400.96875,
+        573.9193522135416
+      ],
+      "span": {
+        "offset": 0,
+        "length": 12
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Female",
+      "field_key": "female",
+      "field_type": "checkbox",
+      "required": false,
+      "validation": null,
+      "coordinates": [
+        421.6875,
+        587.9375,
+        462.3125,
+        573.5070393880209
+      ],
+      "span": {
+        "offset": 0,
+        "length": 6
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Date of Birth",
+      "field_key": "date_of_birth",
+      "field_type": "date",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        49.15625,
+        560.7257893880208,
+        119.03125,
+        548.3568522135417
+      ],
+      "span": {
+        "offset": 0,
+        "length": 14
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Religion",
+      "field_key": "religion",
+      "field_type": "text_input",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        328.25,
+        562.375,
+        376.59375,
+        545.4707641601562
+      ],
+      "span": {
+        "offset": 0,
+        "length": 9
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "B-Form/Smart Card No",
+      "field_key": "b_form_smart_card_no",
+      "field_type": "text_input",
+      "required": true,
+      "validation": "numeric",
+      "coordinates": [
+        48.75,
+        535.1632893880208,
+        169.8125,
+        521.5574544270833
+      ],
+      "span": {
+        "offset": 0,
+        "length": 21
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Father's/ Guardian's Name",
+      "field_key": "father_guardian_name",
+      "field_type": "text_input",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        329.46875,
+        535.1632893880208,
+        470.4375,
+        521.5574544270833
+      ],
+      "span": {
+        "offset": 0,
+        "length": 26
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Father's / Guardian's CNIC No",
+      "field_key": "father_guardian_cnic_no",
+      "field_type": "text_input",
+      "required": true,
+      "validation": "numeric",
+      "coordinates": [
+        49.15625,
+        508.3638916015625,
+        201.09375,
+        496.40724690755206
+      ],
+      "span": {
+        "offset": 0,
+        "length": 29
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Father's / Guardian's Occupation",
+      "field_key": "father_occupation",
+      "field_type": "text_input",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        327.03125,
+        508.7762044270833,
+        494.40625,
+        495.9949544270833
+      ],
+      "span": {
+        "offset": 0,
+        "length": 32
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Mother's Name",
+      "field_key": "mother_name",
+      "field_type": "text_input",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        483.2137044270833,
+        133.65625,
+        470.0201416015625
+      ],
+      "span": {
+        "offset": 0,
+        "length": 14
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Mother's Education",
+      "field_key": "mother_education",
+      "field_type": "text_input",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        329.46875,
+        483.2137044270833,
+        434.6875,
+        470.0201416015625
+      ],
+      "span": {
+        "offset": 0,
+        "length": 19
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Family Monthly Income",
+      "field_key": "family_income",
+      "field_type": "text_input",
+      "required": true,
+      "validation": "numeric",
+      "coordinates": [
+        48.75,
+        456.8266194661458,
+        172.65625,
+        443.633056640625
+      ],
+      "span": {
+        "offset": 0,
+        "length": 22
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Contact No",
+      "field_key": "contact_number",
+      "field_type": "text_input",
+      "required": true,
+      "validation": "numeric",
+      "coordinates": [
+        329.46875,
+        456.414306640625,
+        392.03125,
+        444.0453694661458
+      ],
+      "span": {
+        "offset": 0,
+        "length": 11
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Complete Home Address",
+      "field_key": "home_address",
+      "field_type": "textarea",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        49.15625,
+        430.851806640625,
+        179.15625,
+        417.6582438151042
+      ],
+      "span": {
+        "offset": 0,
+        "length": 22
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Postal Address",
+      "field_key": "postal_address",
+      "field_type": "textarea",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        405.7015787760417,
+        128.78125,
+        391.6834716796875
+      ],
+      "span": {
+        "offset": 0,
+        "length": 15
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Type of Major Disability",
+      "field_key": "major_disability",
+      "field_type": "textarea",
+      "required": false,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        379.726806640625,
+        173.46875,
+        364.8840738932292
+      ],
+      "span": {
+        "offset": 0,
+        "length": 25
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Any Other Disability (Additional)",
+      "field_key": "other_disability",
+      "field_type": "textarea",
+      "required": false,
+      "validation": null,
+      "coordinates": [
+        329.46875,
+        379.3144938151042,
+        496.4375,
+        365.2963460286458
+      ],
+      "span": {
+        "offset": 0,
+        "length": 34
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Disability Certificate No",
+      "field_key": "disability_certificate",
+      "field_type": "text_input",
+      "required": false,
+      "validation": "numeric",
+      "coordinates": [
+        49.5625,
+        352.5150960286458,
+        172.25,
+        340.1461588541667
+      ],
+      "span": {
+        "offset": 0,
+        "length": 26
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Emergency Contact No",
+      "field_key": "emergency_contact_no",
+      "field_type": "text_input",
+      "required": true,
+      "validation": "numeric",
+      "coordinates": [
+        329.875,
+        352.5150960286458,
+        449.71875,
+        339.3215738932292
+      ],
+      "span": {
+        "offset": 0,
+        "length": 21
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Details of Previous School (if attended)",
+      "field_key": "previous_school_details",
+      "field_type": "textarea",
+      "required": false,
+      "validation": null,
+      "coordinates": [
+        49.5625,
+        326.1280110677083,
+        248.21875,
+        313.7590738932292
+      ],
+      "span": {
+        "offset": 0,
+        "length": 41
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Cause of leaving school",
+      "field_key": "cause_of_leaving",
+      "field_type": "textarea",
+      "required": false,
+      "validation": null,
+      "coordinates": [
+        49.5625,
+        300.56551106770837,
+        175.09375,
+        286.95967610677087
+      ],
+      "span": {
+        "offset": 0,
+        "length": 25
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Signature of Parent/Guardian",
+      "field_key": "parent_signature",
+      "field_type": "signature",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        274.5906982421875,
+        202.3125,
+        261.8094482421875
+      ],
+      "span": {
+        "offset": 0,
+        "length": 29
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Admission No.",
+      "field_key": "admission_no",
+      "field_type": "text_input",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        49.15625,
+        211.509033203125,
+        124.3125,
+        199.14009602864587
+      ],
+      "span": {
+        "offset": 0,
+        "length": 13
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Signature of Admission Officer",
+      "field_key": "signature_admission_officer",
+      "field_type": "signature",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        152.96268717447913,
+        203.53125,
+        140.59370930989587
+      ],
+      "span": {
+        "offset": 0,
+        "length": 30
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Signature of Head of School",
+      "field_key": "signature_head_school",
+      "field_type": "signature",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        329.875,
+        152.96268717447913,
+        469.625,
+        140.59370930989587
+      ],
+      "span": {
+        "offset": 0,
+        "length": 27
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Date of Admission",
+      "field_key": "admission_date",
+      "field_type": "date",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        65.96875,
+        494.0,
+        51.5390625
+      ],
+      "span": {
+        "offset": 0,
+        "length": 87
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "B-Form/Smart Card No",
+      "field_key": "b_form_no",
+      "field_type": "text_input",
+      "required": true,
+      "validation": "numeric",
+      "coordinates": [
+        48.75,
+        -6.2109375,
+        494.0,
+        -21.171875
+      ],
+      "span": {
+        "offset": 0,
+        "length": 87
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Father's/ Guardian's Name",
+      "field_key": "father_name",
+      "field_type": "text_input",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        -21.171875,
+        494.0,
+        -36.1328125
+      ],
+      "span": {
+        "offset": 0,
+        "length": 87
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Father's / Guardian's CNIC No",
+      "field_key": "father_cnic",
+      "field_type": "text_input",
+      "required": true,
+      "validation": "numeric",
+      "coordinates": [
+        48.75,
+        -36.1328125,
+        494.0,
+        -51.09375
+      ],
+      "span": {
+        "offset": 0,
+        "length": 87
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Contact No",
+      "field_key": "contact_no",
+      "field_type": "text_input",
+      "required": true,
+      "validation": "numeric",
+      "coordinates": [
+        48.75,
+        -110.9375,
+        494.0,
+        -125.8984375
+      ],
+      "span": {
+        "offset": 0,
+        "length": 87
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Emergency Contact No",
+      "field_key": "emergency_contact",
+      "field_type": "text_input",
+      "required": true,
+      "validation": "numeric",
+      "coordinates": [
+        48.75,
+        -200.703125,
+        494.0,
+        -215.6640625
+      ],
+      "span": {
+        "offset": 0,
+        "length": 87
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Details of Previous School (if attended)",
+      "field_key": "previous_school",
+      "field_type": "textarea",
+      "required": false,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        -215.6640625,
+        494.0,
+        -230.625
+      ],
+      "span": {
+        "offset": 0,
+        "length": 87
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Cause of leaving school",
+      "field_key": "cause_leaving",
+      "field_type": "textarea",
+      "required": false,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        -230.625,
+        494.0,
+        -245.5859375
+      ],
+      "span": {
+        "offset": 0,
+        "length": 87
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Date of Admission",
+      "field_key": "admission_date_office",
+      "field_type": "date",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        -275.509765625,
+        494.0,
+        -290.4716796875
+      ],
+      "span": {
+        "offset": 0,
+        "length": 87
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Signature of Admission Officer",
+      "field_key": "admission_officer_signature",
+      "field_type": "signature",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        -290.4716796875,
+        494.0,
+        -305.43359375
+      ],
+      "span": {
+        "offset": 0,
+        "length": 87
+      },
+      "page_number": 1
+    },
+    {
+      "field_name": "Signature of Head of School",
+      "field_key": "head_school_signature",
+      "field_type": "signature",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        48.75,
+        -305.43359375,
+        494.0,
+        -320.3955078125
+      ],
+      "span": {
+        "offset": 0,
+        "length": 87
+      },
+      "page_number": 1
+    }
+  ],
+  "instructions": [
+    "Bring following documents along-with Admission Form at the time of Visit for Admission:",
+    "1. Copy of Father / Guardian CNIC",
+    "2. 04 Fresh Passport Size Photographs of Child.",
+    "3. Copy of B. Form or Birth Certificate of Child.",
+    "Bring following documents along-with Admission Form at the time of Visit for Admission: 1. Copy of Father / Guardian CNIC 2. 04 Fresh Passport Size Photographs of Child. 3. 3.Copy of B. Form or Birth Certificate of Child."
+  ],
+  "special_areas": [
+    {
+      "type": "image_upload",
+      "label": "PHOTO",
+      "requirements": null,
+      "coordinates": [
+        489.125,
+        749.9707641601562,
+        528.53125,
+        737.1895141601562
+      ]
+    },
+    {
+      "type": "image_upload",
+      "label": "ADMISSION FORM PHOTO",
+      "requirements": null,
+      "coordinates": null
+    },
+    {
+      "type": "signature",
+      "label": "Signature of Parent/Guardian",
+      "requirements": null,
+      "coordinates": null
+    },
+    {
+      "type": "signature",
+      "label": "Signature of Admission Officer",
+      "requirements": null,
+      "coordinates": null
+    },
+    {
+      "type": "signature",
+      "label": "Signature of Head of School",
+      "requirements": null,
+      "coordinates": null
+    },
+    {
+      "type": "image_upload",
+      "label": "Paste Photograph",
+      "requirements": "passport size",
+      "coordinates": [
+        67.84375,
+        92.35481770833337,
+        249.03125,
+        77.51204427083337
+      ]
+    }
+  ]
+}

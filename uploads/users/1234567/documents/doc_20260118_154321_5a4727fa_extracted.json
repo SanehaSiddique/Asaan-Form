@@ -1,0 +1,18 @@
+{
+  "ocr": {
+    "english_text": "",
+    "urdu_text": "",
+    "combined_text": ""
+  },
+  "extracted": {
+    "error": "No text extracted from document"
+  },
+  "metadata": {
+    "original_filename": "MATRIC CERTIFICATE ZAINAB KHALID.pdf",
+    "saved_filename": "doc_20260118_154321_5a4727fa.pdf",
+    "file_path": "C:\\Users\\Hp\\Documents\\Asaan-Form-main\\ai-backend\\uploads\\users\\1234567\\documents\\doc_20260118_154321_5a4727fa.pdf",
+    "document_type": null,
+    "size": 288926,
+    "uploaded_at": "2026-01-18T15:43:21.847612"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "ocr": {
+    "english_text": "",
+    "urdu_text": "ہ6  ۴\n۲۴W۴-۴۴C\n4A۸۴I-4-o۸۴ ۵\n4A۴-۸-۴ ۵۴\n70 6Sei6S5S۴ 00600 11 ۲10\nPP1،ا 220125\n200 000 000 ed00م ۲ WPec۱۱0ں-۱C1 177 ۱0 S۴4۸ ۴۷۴ ۲۳ 101 P10106 a id1ro۳۴\n۲] 6۴ ۲ePeci۱400ا-۔ [i77 46۔44 ۵4 P20 ii00 660 \"5.E 5655 2006\" 0000rع۳\nممععَلس0\n25d5 56ں]ک\n[EAA100 ای0ھ\n1444417\nSpp۳\n6 ۲caو۳ب\n۵A-r۸7 llad۴\n۵A ۸۳ ل۔\nا ۲۸ ۱۸\nA00 ۱",
+    "combined_text": "[Urdu]\nہ6  ۴\n۲۴W۴-۴۴C\n4A۸۴I-4-o۸۴ ۵\n4A۴-۸-۴ ۵۴\n70 6Sei6S5S۴ 00600 11 ۲10\nPP1،ا 220125\n200 000 000 ed00م ۲ WPec۱۱0ں-۱C1 177 ۱0 S۴4۸ ۴۷۴ ۲۳ 101 P10106 a id1ro۳۴\n۲] 6۴ ۲ePeci۱400ا-۔ [i77 46۔44 ۵4 P20 ii00 660 \"5.E 5655 2006\" 0000rع۳\nممععَلس0\n25d5 56ں]ک\n[EAA100 ای0ھ\n1444417\nSpp۳\n6 ۲caو۳ب\n۵A-r۸7 llad۴\n۵A ۸۳ ل۔\nا ۲۸ ۱۸\nA00 ۱"
+  },
+  "extracted": {
+    "document_number": "H6 4",
+    "serial_number": "24W4-44C",
+    "issue_date": "4A84I-4-o84 5",
+    "expiry_date": "4A4-8-4 54",
+    "licence_number": "70 6Sei6S5S4 00600 11 210",
+    "holder_name": "PP1",
+    "father_husband_name": "220125",
+    "address": "200 000 000 ed00m 2 WPec110n-1C1 177 10 S44 8 474 23 101 P10106 a id1ro34",
+    "date_of_birth": "2] 6 4 2ePeci1400a-",
+    "place_of_birth": "i77 46.44 54 P20 ii00 660",
+    "issue_place": "5.E 5655 2006",
+    "category": "0000r3",
+    "class": "mma3ls0",
+    "endorsements": "25d5 56n",
+    "restrictions": "EAA100 i0h",
+    "vehicle_type": "1444417",
+    "engine_number": "Spp3",
+    "chassis_number": "6 2cau3b",
+    "model": "5A-r87 llad4",
+    "year_of_manufacture": "5A 83 l",
+    "seating_capacity": "a 28 18",
+    "engine_capacity": "A00 1"
+  },
+  "metadata": {
+    "original_filename": "Zainab khalid_certificate.png",
+    "saved_filename": "doc_20260118_145909_bf324964.png",
+    "file_path": "C:\\Users\\Hp\\Documents\\Asaan-Form-main\\ai-backend\\uploads\\users\\123456\\documents\\doc_20260118_145909_bf324964.png",
+    "document_type": null,
+    "size": 469072,
+    "uploaded_at": "2026-01-18T14:59:09.555916"
+  }
+}

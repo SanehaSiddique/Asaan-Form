@@ -1,0 +1,18 @@
+{
+  "ocr": {
+    "english_text": "",
+    "urdu_text": "",
+    "combined_text": ""
+  },
+  "extracted": {
+    "error": "No text extracted from document"
+  },
+  "metadata": {
+    "original_filename": "11359_challanform_759_1753436181.pdf",
+    "saved_filename": "doc_20260118_154418_cb0f8eef.pdf",
+    "file_path": "C:\\Users\\Hp\\Documents\\Asaan-Form-main\\ai-backend\\uploads\\users\\1234567\\documents\\doc_20260118_154418_cb0f8eef.pdf",
+    "document_type": null,
+    "size": 184564,
+    "uploaded_at": "2026-01-18T15:44:18.826928"
+  }
+}

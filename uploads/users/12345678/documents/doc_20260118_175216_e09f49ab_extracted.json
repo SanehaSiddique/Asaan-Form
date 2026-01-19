@@ -1,0 +1,123 @@
+{
+  "ocr": {
+    "english_text": "<!-- image -->\n\n<!-- image -->\n\n## Zainab Khalid\n\n## Software Developer\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n- bcsf22m013@pucit.edu.pk\n\n03358448231\n\n- Allama Iqbal Town Lahore,Pakistan\n\n- linkedin.com/in/zainab-khalid-34ba38261\n\n- github.com/Zainab1872003\n\n- leetcode.com/u/Kaneezkhalid1872003\n\n## INTRODUCTION\n\nInnovative Computer Science student and a great problem solver with a strong passion for crafting creative solutions and tackling complex problems. With hands-on experience in machine learning and a knack for investigative research, I excel at developing practical, forward-thinking applications. Eager to leverage my technical expertise and analytical mindset in a dynamic, collaborative environment to deliver impactful results.\n\n## EDUCATION\n\n## Bachelors in Computer Science University of the Punjab\n\n12/2022 - present | Lahore, Pakistan CGPA: 3.68 (5th semester) 6th completed but results are pending\n\n## Intermediate Punjab Group of Colleges\n\nLahore, Pakistan\n\nGrade : A+\n\n## SKILLS\n\n- Programming: C,C++,Python,Javascript\n\n- Web Development:  MERN, FLASK\n\n- AI : Deep Learning , Computer Vision , GenAI\n\n- Database : SQL , MongoDB , ChromaDB\n\n- Soft Skills : Problem Solving , Investigating Skill\n\n## CERTIFICATES\n\n- Code Bees Programming Competition\n- WomenTechQuest by 10Pearls\n- CodeFest by GDSC PU Lahore\n\n## ORGANISATIONS\n\nFCIT sports society Photographer\n\n## PROFESSIONAL EXPERIENCE\n\n## AI Engineer EKKEL AI\n\n07/2025 - 10/2025 | Lahore, Pakistan\n\nTeacher Assistant of Programming Fundamentals Dr.Saadia Shahzad\n\nBackend Developer Internee Cyber Advance Solutions (Unique Group Of Colleges Software House)\n\n## PROJECTS\n\n## InsightStream (RAG)\n\nAn AI chatbot that lets users ask questions and clear doubts in real-time about any running YouTube video. Implement using LangChain and fine-tuning the pre trained model.\n\n## Semantic Search Vibe (ChromaDB , Mini-Lama , Deepseek)\n\nAn AI-powered todo app that understands you from habits to context, from tasks to conversations.\n\nIt is an AI-powered todo app that understands your habits and tasks. It generates a personal productivity profile by analyzing your todos and consistency.The AI chat assistant maintains context without needing a database using vector embeddings instead.Semantic search finds relevant tasks by meaning, so you can ask 'Where am I learning DSA?' and get instant answers.\n\n## Exam Sheet Name &amp; Roll Number Detection (Computer Vision)\n\n- Developed an OpenCV-based system to detect names and roll numbers in scanned exam sheets.Used Template Matching for accurate text recognition.\n\n## Event Management App (Flask) (Flask, jinja , Flask-PyMongo,Cloudinary(poster upload))\n\nA platform where vendors can create and manage events and customers can browse events , view details, filter events base on there location and availability and book event, cancel event.\n\n<!-- image -->",
+    "urdu_text": "",
+    "combined_text": "<!-- image -->\n\n<!-- image -->\n\n## Zainab Khalid\n\n## Software Developer\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n- bcsf22m013@pucit.edu.pk\n\n03358448231\n\n- Allama Iqbal Town Lahore,Pakistan\n\n- linkedin.com/in/zainab-khalid-34ba38261\n\n- github.com/Zainab1872003\n\n- leetcode.com/u/Kaneezkhalid1872003\n\n## INTRODUCTION\n\nInnovative Computer Science student and a great problem solver with a strong passion for crafting creative solutions and tackling complex problems. With hands-on experience in machine learning and a knack for investigative research, I excel at developing practical, forward-thinking applications. Eager to leverage my technical expertise and analytical mindset in a dynamic, collaborative environment to deliver impactful results.\n\n## EDUCATION\n\n## Bachelors in Computer Science University of the Punjab\n\n12/2022 - present | Lahore, Pakistan CGPA: 3.68 (5th semester) 6th completed but results are pending\n\n## Intermediate Punjab Group of Colleges\n\nLahore, Pakistan\n\nGrade : A+\n\n## SKILLS\n\n- Programming: C,C++,Python,Javascript\n\n- Web Development:  MERN, FLASK\n\n- AI : Deep Learning , Computer Vision , GenAI\n\n- Database : SQL , MongoDB , ChromaDB\n\n- Soft Skills : Problem Solving , Investigating Skill\n\n## CERTIFICATES\n\n- Code Bees Programming Competition\n- WomenTechQuest by 10Pearls\n- CodeFest by GDSC PU Lahore\n\n## ORGANISATIONS\n\nFCIT sports society Photographer\n\n## PROFESSIONAL EXPERIENCE\n\n## AI Engineer EKKEL AI\n\n07/2025 - 10/2025 | Lahore, Pakistan\n\nTeacher Assistant of Programming Fundamentals Dr.Saadia Shahzad\n\nBackend Developer Internee Cyber Advance Solutions (Unique Group Of Colleges Software House)\n\n## PROJECTS\n\n## InsightStream (RAG)\n\nAn AI chatbot that lets users ask questions and clear doubts in real-time about any running YouTube video. Implement using LangChain and fine-tuning the pre trained model.\n\n## Semantic Search Vibe (ChromaDB , Mini-Lama , Deepseek)\n\nAn AI-powered todo app that understands you from habits to context, from tasks to conversations.\n\nIt is an AI-powered todo app that understands your habits and tasks. It generates a personal productivity profile by analyzing your todos and consistency.The AI chat assistant maintains context without needing a database using vector embeddings instead.Semantic search finds relevant tasks by meaning, so you can ask 'Where am I learning DSA?' and get instant answers.\n\n## Exam Sheet Name &amp; Roll Number Detection (Computer Vision)\n\n- Developed an OpenCV-based system to detect names and roll numbers in scanned exam sheets.Used Template Matching for accurate text recognition.\n\n## Event Management App (Flask) (Flask, jinja , Flask-PyMongo,Cloudinary(poster upload))\n\nA platform where vendors can create and manage events and customers can browse events , view details, filter events base on there location and availability and book event, cancel event.\n\n<!-- image -->"
+  },
+  "extracted": {
+    "name": "Zainab Khalid",
+    "title": "Software Developer",
+    "email": "bcsf22m013@pucit.edu.pk",
+    "phone_number": "03358448231",
+    "address": "Allama Iqbal Town, Lahore, Pakistan",
+    "linkedin_profile": "linkedin.com/in/zainab-khalid-34ba38261",
+    "github_profile": "github.com/Zainab1872003",
+    "leetcode_profile": "leetcode.com/u/Kaneezkhalid1872003",
+    "introduction": "Innovative Computer Science student and a great problem solver with a strong passion for crafting creative solutions and tackling complex problems. With hands-on experience in machine learning and a knack for investigative research, I excel at developing practical, forward-thinking applications. Eager to leverage my technical expertise and analytical mindset in a dynamic, collaborative environment to deliver impactful results.",
+    "education": [
+      {
+        "degree": "Bachelors in Computer Science",
+        "university": "University of the Punjab",
+        "start_date": "12/2022",
+        "end_date": "present",
+        "location": "Lahore, Pakistan",
+        "cgpa": 3.68,
+        "semester": 5
+      },
+      {
+        "degree": "Intermediate",
+        "university": "Punjab Group of Colleges",
+        "location": "Lahore, Pakistan",
+        "grade": "A+"
+      }
+    ],
+    "skills": {
+      "programming": [
+        "C",
+        "C++",
+        "Python",
+        "Javascript"
+      ],
+      "web_development": [
+        "MERN",
+        "FLASK"
+      ],
+      "ai": [
+        "Deep Learning",
+        "Computer Vision",
+        "GenAI"
+      ],
+      "database": [
+        "SQL",
+        "MongoDB",
+        "ChromaDB"
+      ],
+      "soft_skills": [
+        "Problem Solving",
+        "Investigating Skill"
+      ]
+    },
+    "certificates": [
+      "Code Bees Programming Competition",
+      "WomenTechQuest by 10Pearls",
+      "CodeFest by GDSC PU Lahore"
+    ],
+    "organisations": [
+      {
+        "name": "FCIT sports society",
+        "role": "Photographer"
+      }
+    ],
+    "professional_experience": [
+      {
+        "title": "AI Engineer",
+        "company": "EKKEL AI",
+        "start_date": "07/2025",
+        "end_date": "10/2025",
+        "location": "Lahore, Pakistan"
+      },
+      {
+        "title": "Teacher Assistant of Programming Fundamentals",
+        "supervisor": "Dr. Saadia Shahzad",
+        "null": null
+      },
+      {
+        "title": "Backend Developer Internee",
+        "company": "Cyber Advance Solutions (Unique Group Of Colleges Software House)",
+        "null": null
+      }
+    ],
+    "projects": [
+      {
+        "name": "InsightStream (RAG)",
+        "description": "An AI chatbot that lets users ask questions and clear doubts in real-time about any running YouTube video. Implement using LangChain and fine-tuning the pre trained model."
+      },
+      {
+        "name": "Semantic Search Vibe (ChromaDB, Mini-Lama, Deepseek)",
+        "description": "An AI-powered todo app that understands you from habits to context, from tasks to conversations. It generates a personal productivity profile by analyzing your todos and consistency. The AI chat assistant maintains context without needing a database using vector embeddings instead. Semantic search finds relevant tasks by meaning, so you can ask 'Where am I learning DSA?' and get instant answers."
+      },
+      {
+        "name": "Exam Sheet Name & Roll Number Detection (Computer Vision)",
+        "description": "Developed an OpenCV-based system to detect names and roll numbers in scanned exam sheets. Used Template Matching for accurate text recognition."
+      },
+      {
+        "name": "Event Management App (Flask)",
+        "description": "A platform where vendors can create and manage events and customers can browse events, view details, filter events base on their location and availability and book event, cancel event.",
+        "technologies": [
+          "Flask",
+          "jinja",
+          "Flask-PyMongo",
+          "Cloudinary"
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "original_filename": "Zainab-Khalid-FlowCV-Resume-20251124.pdf",
+    "saved_filename": "doc_20260118_175216_e09f49ab.pdf",
+    "file_path": "C:\\Users\\Hp\\Documents\\Asaan-Form-main\\ai-backend\\uploads\\users\\12345678\\documents\\doc_20260118_175216_e09f49ab.pdf",
+    "document_type": null,
+    "size": 70438,
+    "uploaded_at": "2026-01-18T17:52:16.186436"
+  }
+}

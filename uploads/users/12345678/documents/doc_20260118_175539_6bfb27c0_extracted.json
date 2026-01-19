@@ -1,0 +1,28 @@
+{
+  "ocr": {
+    "english_text": "PAKISTAN National Identity Card\nISLAMIC REPUBLIC OF PAKISTAN Name\nAlam Zaib\n\nFather Name\nAfsar Khan\n06\nGender Country of Stay\nM Pakistan\nIdentity Number Date of Birth\n42501-8830665-7 01.01.1988\n13932 Date of Issue Date of Expiry Aly=\n26.08.2020\n26.08.2030 Holder's Signature\n2,O B.33-1TU7U5 5:= 035 42501-8830665-7\n2_1\n3061: tor\n503991135529",
+    "urdu_text": "68 پر626c01 2ac1270 [A4]2۵\n210 0217\nعالم زیب\nافسر خان\nواا\n2-5666688818526 موجودہ پتہ: جنت گُل ٹاؤن ترین آبادان\n44522 موجودہ پتہ: جنت گُل ٹاؤن ترین آباداسکیم 33، محلہ سپربائی دے\nملیر، ضلع کراچی ملیر\nمستقل پتہ : محلہ ابراہیم آبادچارسدہ روڈ، پشاور\n125222229503\nمنما۷۸۔اورل",
+    "combined_text": "[English]\nPAKISTAN National Identity Card\nISLAMIC REPUBLIC OF PAKISTAN Name\nAlam Zaib\n\nFather Name\nAfsar Khan\n06\nGender Country of Stay\nM Pakistan\nIdentity Number Date of Birth\n42501-8830665-7 01.01.1988\n13932 Date of Issue Date of Expiry Aly=\n26.08.2020\n26.08.2030 Holder's Signature\n2,O B.33-1TU7U5 5:= 035 42501-8830665-7\n2_1\n3061: tor\n503991135529\n\n[Urdu]\n68 پر626c01 2ac1270 [A4]2۵\n210 0217\nعالم زیب\nافسر خان\nواا\n2-5666688818526 موجودہ پتہ: جنت گُل ٹاؤن ترین آبادان\n44522 موجودہ پتہ: جنت گُل ٹاؤن ترین آباداسکیم 33، محلہ سپربائی دے\nملیر، ضلع کراچی ملیر\nمستقل پتہ : محلہ ابراہیم آبادچارسدہ روڈ، پشاور\n125222229503\nمنما۷۸۔اورل"
+  },
+  "extracted": {
+    "full_name": "Alam Zaib",
+    "father_name": "Afsar Khan",
+    "gender": "Male",
+    "date_of_birth": "1988-01-01",
+    "id_number": "42501-8830665-7",
+    "date_of_issue": "2020-08-26",
+    "date_of_expiry": "2030-08-26",
+    "current_address": "Janat Gul Town, Scheme 33, Super Bay, Malir, Karachi",
+    "permanent_address": "Ibrahim Abad, Charsadda Road, Peshawar",
+    "document_type": "national_id",
+    "country_of_stay": "Pakistan"
+  },
+  "metadata": {
+    "original_filename": "Screenshot 2026-01-18 175518.png",
+    "saved_filename": "doc_20260118_175539_6bfb27c0.png",
+    "file_path": "C:\\Users\\Hp\\Documents\\Asaan-Form-main\\ai-backend\\uploads\\users\\12345678\\documents\\doc_20260118_175539_6bfb27c0.png",
+    "document_type": null,
+    "size": 1349121,
+    "uploaded_at": "2026-01-18T17:55:39.214303"
+  }
+}

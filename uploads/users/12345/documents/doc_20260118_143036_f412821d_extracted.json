@@ -1,0 +1,22 @@
+{
+  "ocr": {
+    "english_text": "",
+    "urdu_text": "حَۃَم لہ واع  ا 6آ ا\nمنہ فت ارفی ف و",
+    "combined_text": "[Urdu]\nحَۃَم لہ واع  ا 6آ ا\nمنہ فت ارفی ف و"
+  },
+  "extracted": {
+    "name": null,
+    "father_name": null,
+    "date": null,
+    "address": null,
+    "note": "The provided Urdu OCR text is not readable or does not contain any meaningful information."
+  },
+  "metadata": {
+    "original_filename": "feeslip.png",
+    "saved_filename": "doc_20260118_143036_f412821d.png",
+    "file_path": "C:\\Users\\Hp\\Documents\\Asaan-Form-main\\ai-backend\\uploads\\users\\12345\\documents\\doc_20260118_143036_f412821d.png",
+    "document_type": null,
+    "size": 445634,
+    "uploaded_at": "2026-01-18T14:30:36.997798"
+  }
+}

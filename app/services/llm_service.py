@@ -1,6 +1,7 @@
 import json
 from typing import Dict, List, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.documents import Document
 from app.utils.llm import get_llm
 
 
@@ -72,7 +73,7 @@ class FormExtractionService:
         Split large JSON into smaller chunks
         
         Args:
-            json_data: The docling JSON
+            json_data: The docling JSON (can be combined from multiple pages)
             max_size: Maximum characters per chunk
             
         Returns:
@@ -86,13 +87,33 @@ class FormExtractionService:
         
         chunks = []
         
-        # Try to chunk intelligently by 'texts' array
-        if isinstance(json_data, dict) and 'texts' in json_data:
+        # Handle combined multi-page JSON structure
+        if isinstance(json_data, dict) and 'all_texts' in json_data:
+            # This is our combined format from multiple pages
+            texts = json_data['all_texts']
+            metadata = json_data.get('metadata', {})
+            
+            # Calculate how many items per chunk
+            num_chunks = max(1, (len(json_str) // max_size) + 1)
+            items_per_chunk = max(5, len(texts) // num_chunks)
+            
+            # Create chunks
+            for i in range(0, len(texts), items_per_chunk):
+                chunk_texts = texts[i:i + items_per_chunk]
+                chunk_data = {
+                    'texts': chunk_texts,
+                    'metadata': metadata,
+                    'chunk_info': f'items {i} to {min(i + items_per_chunk, len(texts))} of {len(texts)}'
+                }
+                chunks.append(json.dumps(chunk_data, indent=2, ensure_ascii=False))
+        
+        # Handle single page format with 'texts' array
+        elif isinstance(json_data, dict) and 'texts' in json_data:
             texts = json_data['texts']
             metadata = {k: v for k, v in json_data.items() if k != 'texts'}
             
             # Calculate how many items per chunk
-            num_chunks = (len(json_str) // max_size) + 1
+            num_chunks = max(1, (len(json_str) // max_size) + 1)
             items_per_chunk = max(5, len(texts) // num_chunks)
             
             # Create chunks
@@ -100,15 +121,29 @@ class FormExtractionService:
                 chunk_data = {
                     'texts': texts[i:i + items_per_chunk],
                     'metadata': metadata.get('origin', {}),
-                    'chunk_info': f'items {i} to {i + items_per_chunk}'
+                    'chunk_info': f'items {i} to {min(i + items_per_chunk, len(texts))}'
                 }
                 chunks.append(json.dumps(chunk_data, indent=2, ensure_ascii=False))
+        
+        # Handle page-based structure
+        elif isinstance(json_data, dict) and 'pages' in json_data:
+            pages = json_data['pages']
+            
+            for page in pages:
+                page_str = json.dumps(page, indent=2, ensure_ascii=False)
+                if len(page_str) <= max_size:
+                    chunks.append(page_str)
+                else:
+                    # Split large pages further
+                    for i in range(0, len(page_str), max_size):
+                        chunks.append(page_str[i:i + max_size])
+        
         else:
             # Fallback: simple character split
             for i in range(0, len(json_str), max_size):
                 chunks.append(json_str[i:i + max_size])
         
-        return chunks
+        return chunks if chunks else [json_str]
     
     async def _extract_from_chunk(
         self,
@@ -148,9 +183,14 @@ class FormExtractionService:
             
             # Clean markdown code blocks if present
             if "```json" in content:
-                content = content.split("```json").split("```").strip()[1]
+                content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
-                content = content.split("```")[8].split("```")[0].strip()
+                parts = content.split("```")
+                if len(parts) >= 2:
+                    content = parts[1].strip()
+                    # Remove language identifier if present (e.g., "json\n{...")
+                    if content.startswith(("json", "JSON")):
+                        content = content[4:].strip()
             
             # Parse JSON
             result = json.loads(content)

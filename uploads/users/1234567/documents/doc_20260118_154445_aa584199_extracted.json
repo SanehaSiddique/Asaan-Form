@@ -1,0 +1,75 @@
+{
+  "ocr": {
+    "english_text": "DTDOSAIDAMNSHAH\nof (Institubion) GiK College, Ghulam Ishaq Khan Institute of Engg. Science & Tech, Topi Dist. Swabi SHAH FAHAD\nhas secured the marks shown againat each\nsubject in the Secondary School Certificate (SSC) Examination held in the month(s) of March / Aprl\nMark of Identification:\nSubject(s) Subj Max. SSC1 MARKS OBTAINED SSC-11 P.I&H1 Pass/ Romar Fail\nMarks Th. Pr. Total Th P1. Totar Total\n1 ENGLISH (COMPULSORY)\n150 060 0690864 054 133 PASS\n2 URDU (COMPULSORY)\n150 069 060 088 086 135 PASS\n3 ISLAMIYAT (COMPULSORY)\n100 047 047 045 045 092 PASS\n100 047 047 048 048 095 PASS\n4 PAKISTAN STUDIES\n5 MATHEMATICS\n150 071 071 074 074 145 PASS\n6 PHYSICS\n150 059 059 063020 083 142 PASS\n7 CHEMISTRY\n150 057 057 065 020 08s 142 PASS\n8 COMPUTER SCIENCE\n150 055 055 049040 089 144 PASS\nTotal Marks obtained 1028/1100 ( ONE THOUSAND TWENTY-EIGHT OUt of ONE THOUSAND ONE HU",
+    "urdu_text": "",
+    "combined_text": "[English]\nDTDOSAIDAMNSHAH\nof (Institubion) GiK College, Ghulam Ishaq Khan Institute of Engg. Science & Tech, Topi Dist. Swabi SHAH FAHAD\nhas secured the marks shown againat each\nsubject in the Secondary School Certificate (SSC) Examination held in the month(s) of March / Aprl\nMark of Identification:\nSubject(s) Subj Max. SSC1 MARKS OBTAINED SSC-11 P.I&H1 Pass/ Romar Fail\nMarks Th. Pr. Total Th P1. Totar Total\n1 ENGLISH (COMPULSORY)\n150 060 0690864 054 133 PASS\n2 URDU (COMPULSORY)\n150 069 060 088 086 135 PASS\n3 ISLAMIYAT (COMPULSORY)\n100 047 047 045 045 092 PASS\n100 047 047 048 048 095 PASS\n4 PAKISTAN STUDIES\n5 MATHEMATICS\n150 071 071 074 074 145 PASS\n6 PHYSICS\n150 059 059 063020 083 142 PASS\n7 CHEMISTRY\n150 057 057 065 020 08s 142 PASS\n8 COMPUTER SCIENCE\n150 055 055 049040 089 144 PASS\nTotal Marks obtained 1028/1100 ( ONE THOUSAND TWENTY-EIGHT OUt of ONE THOUSAND ONE HU"
+  },
+  "extracted": {
+    "student_name": "SHAH FAHAD",
+    "institution_name": "GiK College, Ghulam Ishaq Khan Institute of Engg. Science & Tech",
+    "institution_address": "Topi Dist. Swabi",
+    "examination_name": "Secondary School Certificate (SSC) Examination",
+    "examination_month": "March / April",
+    "mark_of_identification": "DTDOSAIDAMNSHAH",
+    "subjects": [
+      {
+        "subject_name": "ENGLISH (COMPULSORY)",
+        "max_marks": 150,
+        "marks_obtained": 133,
+        "result": "PASS"
+      },
+      {
+        "subject_name": "URDU (COMPULSORY)",
+        "max_marks": 150,
+        "marks_obtained": 135,
+        "result": "PASS"
+      },
+      {
+        "subject_name": "ISLAMIYAT (COMPULSORY)",
+        "max_marks": 100,
+        "marks_obtained": 92,
+        "result": "PASS"
+      },
+      {
+        "subject_name": "PAKISTAN STUDIES",
+        "max_marks": null,
+        "marks_obtained": null,
+        "result": null
+      },
+      {
+        "subject_name": "MATHEMATICS",
+        "max_marks": 150,
+        "marks_obtained": 145,
+        "result": "PASS"
+      },
+      {
+        "subject_name": "PHYSICS",
+        "max_marks": 150,
+        "marks_obtained": 142,
+        "result": "PASS"
+      },
+      {
+        "subject_name": "CHEMISTRY",
+        "max_marks": 150,
+        "marks_obtained": 142,
+        "result": "PASS"
+      },
+      {
+        "subject_name": "COMPUTER SCIENCE",
+        "max_marks": 150,
+        "marks_obtained": 144,
+        "result": "PASS"
+      }
+    ],
+    "total_marks_obtained": 1028,
+    "total_max_marks": 1100
+  },
+  "metadata": {
+    "original_filename": "5ccda6c4-8dec-4198-a186-98b87a69e98d_result_card.jpg",
+    "saved_filename": "doc_20260118_154445_aa584199.jpg",
+    "file_path": "C:\\Users\\Hp\\Documents\\Asaan-Form-main\\ai-backend\\uploads\\users\\1234567\\documents\\doc_20260118_154445_aa584199.jpg",
+    "document_type": null,
+    "size": 48726,
+    "uploaded_at": "2026-01-18T15:44:45.459433"
+  }
+}

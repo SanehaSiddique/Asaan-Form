@@ -1,15 +1,28 @@
+# FastAPI and web
 fastapi
-uvicorn
+uvicorn[standard]
+python-multipart
+
+# LangChain and LLM
 langgraph
 langchain
 langchain-community
 langchain-openai
+
+# Configuration
 python-dotenv
 pydantic
-python-multipart
-paddleocr
+pydantic-settings
+
+# Document processing
+docling
+pdf2image
 pillow
 pymupdf
-dolcing
 
+# OCR (optional - for Urdu/multilingual)
+paddleocr
+paddlepaddle
 
+# Utilities
+aiofiles
