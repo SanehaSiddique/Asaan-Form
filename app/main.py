@@ -6,6 +6,7 @@ from app.config import settings
 from app.apis.routes import router as document_intake_router
 from app.apis.form_upload import router as form_router
 from app.apis.document_upload import router as document_router
+from app.apis.chatbot import router as chatbot_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -45,6 +46,9 @@ app.include_router(form_router)
 
 # Document routes - for uploading and processing documents (ID cards, certificates)
 app.include_router(document_router)
+
+# Chatbot routes - ingest KB + ask questions via RAG
+app.include_router(chatbot_router)
 
 # Legacy document intake route
 app.include_router(document_intake_router)

@@ -10,6 +10,7 @@ __pycache__/
 
 # Pip temp folders
 pip-*
+uploads/
 
 # OS / Editor junk
 .vscode/

@@ -3,7 +3,15 @@ from pathlib import Path
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
+
+
+import os
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
+
+# Load environment variables from .env file
 load_dotenv()
+
 
 
 class Settings(BaseSettings):
@@ -38,6 +46,37 @@ class Settings(BaseSettings):
     LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0.3"))
     LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "8000"))
     
+
+    
+    # Milvus Settings
+    # Zilliz Cloud (Milvus) Settings
+    # Zilliz Cloud (Milvus) Settings
+    MILVUS_URI: str = ""  # Set in .env
+    MILVUS_USER: str = ""  # Empty for API key auth
+    MILVUS_PASSWORD: str = ""  # Your Zilliz API key
+    MILVUS_COLLECTION_NAME: str = "rag_langchain"
+    MILVUS_DIMENSION: int = 384
+    MILVUS_METRIC_TYPE: str = "COSINE"
+
+
+    MONGODB_URL: str = ""
+    DATABASE_NAME: str = ""
+    MONGODB_COLLECTION: str = ""
+
+    # File Upload Settings
+    UPLOAD_DIR: str = "uploads"
+    MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
+    ALLOWED_EXTENSIONS: list = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt"]
+    
+    # Embedding Settings
+    CHUNK_SIZE: int = 1000
+    CHUNK_OVERLAP: int = 200
+    EMBEDDING_DIMENSION: int = 384  # all-MiniLM-L6-v2 dimension
+
+
+
+
+
     # ========================================================================
     # FILE STORAGE
     # ========================================================================
@@ -72,6 +111,9 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
+
+        
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
