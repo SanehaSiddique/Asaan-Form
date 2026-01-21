@@ -1,112 +1,158 @@
-# Asaan-Form: Your AI Form Assistant  
-**Final Year Project (FYP) – Phase I**
+# Asaan-Form: Your AI Form Assistant
 
-Asaan-Form is an intelligent, multi-agent AI system designed to automate document understanding and form-filling processes.  
-This repository contains the complete **Phase-I development work**, including requirement analysis, OCR research, frontend, agent design, and backend pipeline implementation.
+**Final Year Project (FYP) – Phase I**  
+**Department of Computer Science**  
+**University of the Punjab**
+
+Asaan-Form is an intelligent, **multi-agent AI system** that automates document understanding and form filling. It combines **OCR**, layout analysis, agent orchestration, and large language models (LLMs) to extract structured data from uploaded forms and guide users through an interactive AI chatbot.
+
+---
+
+## 🎯 Project Objectives (Phase-I)
+
+- Analyze functional & non-functional requirements
+- Research and select optimal OCR + layout analysis approach
+- Design modular, agent-based system architecture
+- Implement initial end-to-end processing pipeline
+- Develop responsive frontend
+- Build FAQs-based intelligent chatbot using **RAG**
 
 ---
 
 ## 👥 Team Members & Responsibilities
 
-| Name | Role | Branch | Key Responsibilities |
-|-----|-----|-------|----------------------|
-| **Saneha Siddique (Group Leader)** | Backend / Agent Pipeline | `BCSF22M009` | Intent detection agent, LangGraph pipeline, document processing agent, structured data extraction |
-| **Zainab Khalid** | OCR / Layout Research | `BCSF22M013` | OCR research, form processing agent, structured key/values extraction, Layout Analysis |
-| **Faiqa Mustafa** | Frontend | `BCSF22M019` | preprocessing experiments, Frontend Version 1.0 using React.js, TailwindCSS |
-| **Aqsa Hussain** | ERD / Chatbot LLM | `BCSF22M027` | Requirement analysis, ERD design, documentation, LLM Research, RAG for FAQs based queries |
+| Name            | Role                   | Roll No    | Key Responsibilities                                            |
+| --------------- | ---------------------- | ---------- | --------------------------------------------------------------- |
+| Saneha Siddique | Group Leader / Backend | BCSF22M009 | Intent Detection Agent, LangGraph pipeline, document processing |
+| Zainab Khalid   | OCR / Layout Research  | BCSF22M013 | OCR research, form processing agent, key-value extraction       |
+| Faiqa Mustafa   | Frontend Developer     | BCSF22M019 | Preprocessing experiments, React + TailwindCSS                  |
+| Aqsa Hussain    | ERD / Chatbot LLM      | BCSF22M027 | Requirement analysis, ERD, documentation, RAG-based chatbot     |
 
-> Each team member worked independently on their assigned branch.  
-> Contributions are verified through commit history and pull requests.
-
----
-
-## 🌿 Branch Structure
-
-All development was done using **feature-based branches** to ensure modularity and clear contribution tracking.
-
-
-- `main` → Stable integration branch  
-- Feature branches → Individual member contributions
+All team members are collaborators on this GitHub repository.  
+Individual contributions are traceable via commit history, feature branches, and pull requests.
 
 ---
 
-## 🔀 Pull Requests (Phase-I)
+## 🌿 Git Branching & Collaboration Strategy
 
-All major features were merged into `main` via pull requests after internal review.
+- `main` → stable integration branch
+- Feature branches → individual development (`feature/agent-intent`, `feature/frontend-v1`, etc.)
+- All features merged via **Pull Requests** after peer review
 
-| Pull Request | Description | Merged From |
-|-------------|------------|------------|
-| PR #1 | Main Orchestrator Structure | `BCSF22M009` |
-| PR #2 | Document Agent | `ai-backend/document_agent` |
-| PR #3 | Frontend Version 1.0 | `frontend/version-1.0` |
+### Notable Pull Requests (Phase-I)
 
-> Pull requests contain detailed commit history, comments, and code reviews.
+| PR # | Title                       | Source Branch             | Author |
+| ---- | --------------------------- | ------------------------- | ------ |
+| #1   | Main Orchestrator Structure | BCSF22M009                | Saneha |
+| #2   | Document Processing Agent   | ai-backend/document_agent | Zainab |
+| #3   | Frontend                    | frontend                  | Faiqa  |
 
 ---
 
-## 🧠 System Overview (Phase-I)
+## 🧠 Core Components Implemented (Phase-I)
 
-### Core Components Implemented:
-- ✅ Intent Detection Agent  
-- ✅ Document Processing Agent  
-- ✅ OCR Pipeline (PaddleOCR)  
-- ✅ Agent State Management  
-- ✅ FastAPI-based Endpoints  
-- ✅ LangGraph-based Agent Orchestration
-- ✅ Form Processing (Keys/values extraction)  
-- ✅ Forms Layout with bounding boxes
-- ✅ FAQs based chatbot (RAG)
-- ✅ Frontend version 1.0 (React.js, TailwindCSS)
+- Intent Detection Agent
+- Document Processing Agent
+- OCR Pipeline (**PaddleOCR**)
+- Form Layout Detection + Bounding Boxes
+- Agent State Management
+- **LangGraph**-based multi-agent orchestration
+- **FastAPI** Backend APIs
+- FAQs-based Chatbot with **RAG**
+- Responsive Frontend v1.0
 
 ---
 
 ## 🛠️ Technology Stack
 
-- **Frontend:** React.js, TailwindCSS
-- **Backend:** FastAPI
-- **Layout Analyzer:** Docling
-- **AI Orchestration:** LangGraph  
-- **OCR:** PaddleOCR  
-- **LLM Integration:** OpenRouter  
-- **Database (Planned):** MongoDB  
-- **Task Management:** JIRA  
-- **Version Control:** Git & GitHub  
+| Layer               | Technologies                             |
+| ------------------- | ---------------------------------------- |
+| **Frontend**        | React.js • Tailwind CSS                  |
+| **Backend**         | FastAPI • LangGraph                      |
+| **AI & NLP**        | PaddleOCR • OpenRouter (LLM) • RAG       |
+| **Layout Analysis** | Docling                                  |
+| **Database**        | MongoDB (planned for Phase-II)           |
+| **Tools**           | Git/GitHub • JIRA (requirements & tasks) |
 
 ---
 
-## 📊 Project Management
+## ⚙️ Installation & Setup
 
-- 📌 Requirements & task assignments managed via **JIRA**
-- 📌 Functional and Non-Functional requirements clearly labeled
-- 📌 Member-wise task tracking with progress status
+### Prerequisites
 
----
+- Node.js ≥ v18
+- Python ≥ v3.10
+- Git
 
-## 📌 Phase-I Status
+### Backend
 
-✔ Requirement Analysis  
-✔ OCR Research & Selection  
-✔ Agent Architecture Design  
-✔ Initial End-to-End Pipeline  
-✔ API Testing & Validation  
-✔ Forms Layout Detection
-✔ FAQs Chatbot
-✔ Frontend Version 1.0
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
 
-Phase-I development is **completed successfully**.
+### Frontend
 
----
-
-## 📎 Notes for Evaluators
-
-- Each contribution is traceable through **branch history and PRs**
-- Code follows modular agent-based architecture
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
-## 📬 Contact
+## ▶️ How to Run
 
-For any clarification regarding this repository or Phase-I deliverables, please contact the respective team members listed above.
+1. Start backend server (`uvicorn`)
+2. Launch frontend (`npm run dev`)
+3. Open browser → upload any form/document
+4. Watch the system extract fields via OCR + agents
+5. Interact with the AI chatbot for assistance
 
 ---
-✨ *Asaan-Form — simplifying forms with AI.*
+
+## 📋 Requirement & Quality Management
+
+- Functional + non-functional requirements fully documented
+- Tracked & managed using **JIRA**
+- Requirement changes → documented + reflected in commits
+- Clean code • modular design • no hard-coded secrets
+- `.gitignore` properly configured
+- Meaningful commit messages & conventional PR titles
+
+---
+
+## 📌 Phase-I Status – Completed ✓
+
+- Requirement Analysis
+- OCR Research & Selection
+- Agent Architecture Design
+- End-to-End Initial Pipeline
+- API Testing & Validation
+- Form Layout Detection
+- RAG-based FAQs Chatbot
+- Responsive Frontend v1.0
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License**.  
+All third-party libraries follow their respective licenses.
+
+---
+
+## 📬 Contact & Notes for Evaluators
+
+- All contributions traceable via GitHub commits, branches & PRs
+- Project adheres to departmental FYP GitHub & code quality guidelines
+- Code is structured, commented, and tested before commits
+
+For any questions regarding Phase-I deliverables, feel free to contact any team member listed above.
+
+✨ **Asaan-Form** — Simplifying forms with the power of AI.
+
+```
+
+```
