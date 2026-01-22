@@ -1,5 +1,7 @@
 # Asaan-Form: Your AI Form Assistant
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/7f4ab99c490d454da1440bfddfa647ca)](https://app.codacy.com/gh/SanehaSiddique/Asaan-Form?utm_source=github.com&utm_medium=referral&utm_content=SanehaSiddique/Asaan-Form&utm_campaign=Badge_Grade)
+
 **Final Year Project (FYP) – Phase I**  
 **Department of Computer Science**  
 **University of the Punjab**
