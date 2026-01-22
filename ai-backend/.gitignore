@@ -2,6 +2,7 @@
 asaan-env/
 venv/
 .env
+ai-backend_env/
 
 # Python cache
 __pycache__/
@@ -9,6 +10,7 @@ __pycache__/
 
 # Pip temp folders
 pip-*
+uploads/
 
 # OS / Editor junk
 .vscode/
