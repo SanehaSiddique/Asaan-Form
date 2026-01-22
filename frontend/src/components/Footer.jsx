@@ -99,14 +99,10 @@ const Footer = () => {
 
           {/* Bottom */}
           <div className="mt-12 pt-6 border-t border-border/50">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <p className="text-muted-foreground text-sm">
+              <p className="text-muted-foreground text-sm text-center">
                 © {currentYear} ASAAN FORM. All rights reserved.
               </p>
-              <p className="text-muted-foreground text-sm">
-                Made with ❤️ for Final Year Project
-              </p>
-            </div>
+            
           </div>
         </div>
       </div>

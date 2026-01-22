@@ -1,6 +1,9 @@
+// components/Navbar.jsx
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSelector, useDispatch } from "react-redux";
+import { logout } from "@/redux/slices/authSlice";
 import {
   Menu,
   X,
@@ -13,12 +16,15 @@ import {
   LogIn,
   UserPlus,
 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { isAuthenticated, logout } = useAuth();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const location = useLocation();
+  
+  // Get auth state from Redux
+  const { isAuthenticated } = useSelector((state) => state.auth);
 
   const publicLinks = [
     { name: "Home", path: "/", icon: Home },
@@ -36,8 +42,9 @@ const Navbar = () => {
   const links = isAuthenticated ? privateLinks : publicLinks;
 
   const handleLogout = () => {
-    logout();
+    dispatch(logout());  // Dispatch the logout action
     setIsOpen(false);
+    navigate("/");
   };
 
   return (

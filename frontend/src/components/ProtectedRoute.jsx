@@ -1,9 +1,10 @@
+// components/ProtectedRoute.jsx
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
+import { useSelector } from "react-redux";
 import { motion } from "framer-motion";
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useSelector((state) => state.auth);
   const location = useLocation();
 
   if (isLoading) {

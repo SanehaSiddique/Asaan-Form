@@ -1,14 +1,16 @@
+// pages/Home.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
+import { useSelector } from 'react-redux';
 import { ArrowRight, Upload, FileCheck, Sparkles, Download, Shield, Zap, Clock, Brain } from 'lucide-react';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import PageTransition from '@/components/PageTransition';
-import { useAuth } from '@/context/AuthContext';
 
 const Home = () => {
-  const { isAuthenticated } = useAuth();
+  // Get auth state from Redux store
+  const { isAuthenticated } = useSelector((state) => state.auth);
   const { scrollYProgress } = useScroll();
   const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
 
