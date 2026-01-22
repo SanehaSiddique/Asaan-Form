@@ -3,28 +3,32 @@ import { motion } from 'framer-motion';
 import { Target, Users, Lightbulb, Heart, Github, Linkedin, Mail } from 'lucide-react';
 import Card from '@/components/Card';
 import PageTransition from '@/components/PageTransition';
+import saneha from '../../public/download.png';
+import zainab from '../../public/dd.jpg';
+import faiqa from '../../public/ddd.jpg';
+import aqsa from '../../public/dddd.jpg';
 
 const About = () => {
   const team = [
     {
       name: 'Saneha Siddique',
-      role: 'Project Lead',
-      image: 'https://i.pravatar.cc/150?img=9',
+      role: 'Project Lead & Backend Developer',
+      image: saneha,
     },
     {
       name: 'Zainab Khalid',
       role: 'AI Engineer',
-      image: 'https://i.pravatar.cc/150?img=5',
+      image: zainab,
     },
     {
       name: 'Faiqa Mustafa',
       role: 'Frontend Developer',
-      image: 'https://i.pravatar.cc/150?img=5',
+      image: faiqa,
     },
     {
       name: 'Aqsa Hussain',
-      role: 'UI/UX Designer',
-      image: 'https://i.pravatar.cc/150?img=9',
+      role: 'Chatbot Specialist',
+      image: aqsa,
     },
   ];
 
@@ -230,7 +234,7 @@ const About = () => {
                   className="inline-flex items-center gap-2 text-asaan-royal hover:underline"
                 >
                   <Mail className="w-5 h-5" />
-                  contact@asaanform.com
+                  asaanform@gmail.com
                 </a>
               </Card>
             </motion.div>

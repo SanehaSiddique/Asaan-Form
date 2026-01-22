@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+// pages/Signup.jsx
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useDispatch, useSelector } from 'react-redux';
+import { signupUser, clearError } from '@/redux/slices/authSlice';
 import { Mail, Lock, User, UserPlus, Eye, EyeOff } from 'lucide-react';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import Card from '@/components/Card';
 import PageTransition from '@/components/PageTransition';
-import { useAuth } from '@/context/AuthContext';
 
 const Signup = () => {
   const [name, setName] = useState('');
@@ -14,47 +16,69 @@ const Signup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { signup } = useAuth();
+  const [localError, setLocalError] = useState('');
+  
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+  
+  // Get state from Redux
+  const { loading, error: reduxError, isAuthenticated } = useSelector((state) => state.auth);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Clear errors on component mount
+  useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setLocalError('');
 
+    // Basic validation
     if (!name || !email || !password || !confirmPassword) {
-      setError('Please fill in all fields');
+      setLocalError('Please fill in all fields');
+      return;
+    }
+
+    if (!email.includes('@')) {
+      setLocalError('Please enter a valid email address');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setLocalError('Passwords do not match');
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setLocalError('Password must be at least 6 characters');
       return;
     }
 
-    setIsLoading(true);
-    const result = await signup(email, password, name);
-    setIsLoading(false);
-
-    if (result.success) {
-      navigate('/login');
-    } else {
-      setError(result.error || 'Signup failed');
+    // Dispatch signup action
+    const result = await dispatch(signupUser({ name, email, password }));
+    
+    // Check if signup was successful
+    if (signupUser.fulfilled.match(result)) {
+      navigate('/');
     }
   };
 
+  // Combine local and redux errors
+  const errorMessage = localError || reduxError;
+
   return (
     <PageTransition>
-      <div className="min-h-screen flex items-center justify-center px-6 py-24">
-        {/* Background shapes */}
-        <div className="floating-shape w-80 h-80 bg-asaan-sky -top-20 -right-20" />
-        <div className="floating-shape w-64 h-64 bg-asaan-steel bottom-20 -left-20" style={{ animationDelay: '-8s' }} />
+      <div className="min-h-screen flex items-center justify-center p-4 mt-10 md:px-6 py-24 overflow-x-hidden">
+        {/* Background shapes - Fixed positioning to prevent overflow */}
+        <div className="floating-shape w-80 h-80 bg-asaan-sky -top-20 -right-20 fixed pointer-events-none" />
+        <div className="floating-shape w-64 h-64 bg-asaan-steel bottom-20 -left-20 fixed pointer-events-none" style={{ animationDelay: '-8s' }} />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -62,7 +86,7 @@ const Signup = () => {
           transition={{ duration: 0.6 }}
           className="w-full max-w-md relative z-10"
         >
-          <Card variant="glass" className="p-8">
+          <Card variant="glass" className="p-6 md:p-8">
             <div className="text-center mb-8">
               <motion.div
                 initial={{ scale: 0 }}
@@ -84,6 +108,8 @@ const Signup = () => {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 icon={<User className="w-5 h-5" />}
+                disabled={loading}
+                required
               />
 
               <Input
@@ -93,6 +119,8 @@ const Signup = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 icon={<Mail className="w-5 h-5" />}
+                disabled={loading}
+                required
               />
 
               <div className="relative">
@@ -103,11 +131,14 @@ const Signup = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   icon={<Lock className="w-5 h-5" />}
+                  disabled={loading}
+                  required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-[42px] text-muted-foreground hover:text-foreground transition-colors"
+                  disabled={loading}
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -120,29 +151,43 @@ const Signup = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 icon={<Lock className="w-5 h-5" />}
+                disabled={loading}
+                required
               />
 
-              {error && (
-                <motion.p
+              {errorMessage && (
+                <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="text-destructive text-sm text-center bg-destructive/10 p-3 rounded-xl"
                 >
-                  {error}
-                </motion.p>
+                  {errorMessage}
+                </motion.div>
               )}
 
-              <Button type="submit" className="w-full" size="lg" isLoading={isLoading}>
-                Create Account
+              <Button 
+                type="submit" 
+                className="w-full" 
+                size="lg" 
+                isLoading={loading}
+                disabled={loading}
+              >
+                {loading ? 'Creating Account...' : 'Create Account'}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Already have an account?{' '}
-                <Link to="/login" className="text-asaan-royal hover:underline font-medium">
+                <Link 
+                  to="/login" 
+                  className="text-asaan-royal hover:underline font-medium transition-colors"
+                >
                   Sign in
                 </Link>
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                By signing up, you agree to our Terms of Service and Privacy Policy
               </p>
             </div>
           </Card>
