@@ -40,6 +40,7 @@ const UploadBox = ({
         type: file.type,
         status: file.size > maxSize * 1024 * 1024 ? "error" : "uploading",
         progress: 0,
+        rawFile: file,
       }));
 
       setFiles((prev) => {

@@ -1,5 +1,5 @@
 // pages/Profile.jsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -8,26 +8,16 @@ import Button from '@/components/Button';
 import Card from '@/components/Card';
 import PageTransition from '@/components/PageTransition';
 import { toast } from '@/hooks/use-toast';
+import API from '../../axiosInstance';
 
 const Profile = () => {
   // Get user from Redux instead of Context
   const { user } = useSelector((state) => state.auth);
   const navigate = useNavigate();
 
-  // Dummy form history data
-  const formHistory = [
-    { id: '1', name: 'University Application Form', uploadedAt: '2024-01-15', status: 'completed', format: 'PDF' },
-    { id: '2', name: 'Passport Application', uploadedAt: '2024-01-10', status: 'completed', format: 'DOCX' },
-    { id: '3', name: 'Job Application Form', uploadedAt: '2024-01-05', status: 'draft', format: 'PDF' },
-  ];
-
-  // Dummy uploaded documents
-  const uploadedDocuments = [
-    { name: 'CNIC_Front.jpg', size: '1.2 MB', uploadedAt: '2024-01-15' },
-    { name: 'CNIC_Back.jpg', size: '1.1 MB', uploadedAt: '2024-01-15' },
-    { name: 'Transcript.pdf', size: '2.4 MB', uploadedAt: '2024-01-14' },
-    { name: 'Photo.jpg', size: '0.8 MB', uploadedAt: '2024-01-14' },
-  ];
+  const [formHistory, setFormHistory] = useState([]);
+  const [uploadedDocuments, setUploadedDocuments] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const handleAction = (action, formName) => {
     toast({
@@ -45,6 +35,58 @@ const Profile = () => {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
   };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user) return;
+      const userId = user.id ?? user._id;
+      if (!userId) return;
+      try {
+        setLoading(true);
+        const [formsRes, docsRes] = await Promise.all([
+          API.get(`upload/forms/user/${userId}`),
+          API.get(`upload/documents/user/${userId}`)
+        ]);
+
+        const forms = formsRes.data?.forms || [];
+        const docs = docsRes.data?.documents || [];
+
+        setFormHistory(
+          forms.map((f) => ({
+            id: f._id,
+            name: f.formName || f.fileName || 'Form',
+            uploadedAt: f.createdAt
+              ? new Date(f.createdAt).toLocaleDateString()
+              : '',
+            status: f.formSchema?.length ? 'completed' : 'draft',
+            format: (f.contentType || '').toUpperCase().includes('PDF')
+              ? 'PDF'
+              : 'DOC',
+          }))
+        );
+
+        setUploadedDocuments(
+          docs.map((d) => ({
+            id: d._id,
+            name: d.fileName || d.documentType || 'Document',
+            size: d.fileSize
+              ? `${(d.fileSize / (1024 * 1024)).toFixed(1)} MB`
+              : '',
+            uploadedAt: d.createdAt
+              ? new Date(d.createdAt).toLocaleDateString()
+              : '',
+          }))
+        );
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Profile data fetch error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user]);
 
   // Format join date
   const joinDate = user?.createdAt 
@@ -126,6 +168,12 @@ const Profile = () => {
                   animate="visible" 
                   className="space-y-4"
                 >
+                  {(loading && formHistory.length === 0) && (
+                    <p className="text-sm text-muted-foreground px-2 py-4">Loading your forms...</p>
+                  )}
+                  {!loading && formHistory.length === 0 && (
+                    <p className="text-sm text-muted-foreground px-2 py-4">No forms yet. Start by uploading a new form.</p>
+                  )}
                   {formHistory.map((form) => (
                     <motion.div key={form.id} variants={itemVariants}>
                       <Card variant="glass" className="p-4">
@@ -206,6 +254,12 @@ const Profile = () => {
 
                 <Card variant="glass" className="p-4">
                   <div className="space-y-3">
+                    {(loading && uploadedDocuments.length === 0) && (
+                      <p className="text-sm text-muted-foreground">Loading your documents...</p>
+                    )}
+                    {!loading && uploadedDocuments.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
+                    )}
                     {uploadedDocuments.map((doc, index) => (
                       <motion.div
                         key={doc.name}

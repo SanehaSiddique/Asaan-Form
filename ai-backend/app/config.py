@@ -1,11 +1,7 @@
 # Env & settings
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
-
-# Load environment variables from .env file
-load_dotenv()
 
 
 
@@ -22,47 +18,31 @@ class Settings(BaseSettings):
     # ========================================================================
     # API SETTINGS
     # ========================================================================
-    API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
-    API_PORT: int = int(os.getenv("API_PORT", "8000"))
-    DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
+    API_HOST: str = "0.0.0.0"
+    API_PORT: int = 8000
+    DEBUG: bool = True
     
-    # ========================================================================
-    # LLM CONFIGURATION (OpenRouter)
-    # ========================================================================
-    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
-    OPENROUTER_BASE_URL: str = os.getenv(
-        "OPENROUTER_BASE_URL", 
-        "https://openrouter.ai/api/v1"
-    )
-    LLM_MODEL: str = os.getenv(
-        "LLM_MODEL", 
-        "meta-llama/llama-3.3-70b-instruct:free"
-    )
-    LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0.3"))
-    LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "8000"))
-    
+    # Groq (e.g. llama-3.3-70b-versatile or meta-llama/llama-4-scout-17b-16e-instruct)
+    GROQ_API_KEY: str = ""
+    LLM_MODEL: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+    LLM_TEMPERATURE: float = 0.3
+    LLM_MAX_TOKENS: int = 8000
 
     
     # Milvus Settings
     # Zilliz Cloud (Milvus) Settings
     # Zilliz Cloud (Milvus) Settings
-    MILVUS_URI: str = ""  # Set in .env
-    MILVUS_USER: str = ""  # Empty for API key auth
-    MILVUS_PASSWORD: str = ""  # Your Zilliz API key
+    MILVUS_URI: str = ""
+    MILVUS_USER: str = ""
+    MILVUS_PASSWORD: str = ""
     MILVUS_COLLECTION_NAME: str = "rag_langchain"
     MILVUS_DIMENSION: int = 384
     MILVUS_METRIC_TYPE: str = "COSINE"
 
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    DATABASE_NAME: str = "form_processing"
+    MONGODB_COLLECTION: str = "forms"
 
-    MONGODB_URL: str = ""
-    DATABASE_NAME: str = ""
-    MONGODB_COLLECTION: str = ""
-
-    # File Upload Settings
-    UPLOAD_DIR: str = "uploads"
-    MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
-    ALLOWED_EXTENSIONS: list = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt"]
-    
     # Embedding Settings
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 200
@@ -76,13 +56,13 @@ class Settings(BaseSettings):
     # FILE STORAGE
     # ========================================================================
     BASE_DIR: Path = Path(__file__).parent.parent
-    UPLOAD_DIR: Path = BASE_DIR / "uploads"
+    UPLOAD_DIR: Path = BASE_DIR / "uploads1"
     USERS_DIR: Path = UPLOAD_DIR / "users"  # Root for all user folders
     OUTPUT_DIR: Path = UPLOAD_DIR / "output"
     
     # File upload limits
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10 MB
-    ALLOWED_EXTENSIONS: list = [".pdf", ".png", ".jpg", ".jpeg"]
+    ALLOWED_EXTENSIONS: list = [".pdf", ".png", ".jpg", ".jpeg" , ".docx", ".doc"]
     
     # PDF conversion settings
     PDF_DPI: int = 300  # DPI for PDF to image conversion
@@ -104,7 +84,8 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list = ["*"]
     
     class Config:
-        env_file = ".env"
+        # Load .env from project root (ai-backend) so it works when running from app/
+        env_file = str(Path(__file__).resolve().parent.parent / ".env")
         case_sensitive = True
         extra = "ignore"
 
@@ -158,8 +139,8 @@ def validate_settings():
     """Validate critical settings"""
     errors = []
     
-    if not settings.OPENROUTER_API_KEY:
-        errors.append("OPENROUTER_API_KEY is not set")
+    if not settings.GROQ_API_KEY:
+        errors.append("GROQ_API_KEY is not set")
     
     if errors:
         raise ValueError(
@@ -178,7 +159,7 @@ def print_settings():
     print(f"Project: {settings.PROJECT_NAME} v{settings.VERSION}")
     print(f"Debug: {settings.DEBUG}")
     print(f"API: {settings.API_HOST}:{settings.API_PORT}")
-    print("\nLLM:")
+    print("\nLLM (Groq):")
     print(f"  Model: {settings.LLM_MODEL}")
     print(f"  Temperature: {settings.LLM_TEMPERATURE}")
     print("\nDirectories:")

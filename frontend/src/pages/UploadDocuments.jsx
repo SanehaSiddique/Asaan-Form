@@ -1,18 +1,99 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
-import { FileStack, ArrowRight, ArrowLeft, CreditCard, GraduationCap, FileText } from 'lucide-react';
+import { FileStack, ArrowRight, ArrowLeft, CreditCard, GraduationCap, FileText, Loader2 } from 'lucide-react';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import UploadBox from '@/components/UploadBox';
 import PageTransition from '@/components/PageTransition';
+import API from '../../axiosInstance';
+import { toast } from 'sonner';
 
 const UploadDocuments = () => {
-  const [hasFiles, setHasFiles] = useState(false);
+  const [files, setFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
+  const formId = searchParams.get('formId');
 
-  const handleFilesChange = (files) => {
-    setHasFiles(files.some(f => f.status === 'success' || f.status === 'uploading'));
+  const handleFilesChange = (newFiles) => {
+    setFiles(newFiles);
+  };
+
+  const handleContinue = async () => {
+    const validFiles = files.filter(
+      (f) => f.rawFile && f.status !== 'error'
+    );
+    if (!validFiles.length) {
+      toast.error("Please select at least one document");
+      return;
+    }
+
+    if (!user) {
+      toast.error("Please login to upload documents");
+      navigate('/login');
+      return;
+    }
+    const userId = user?.id ?? user?._id;
+    if (!userId) {
+      toast.error("Invalid user session. Please log in again.");
+      return;
+    }
+
+    if (!formId) {
+      toast.error("Form ID missing. Please go back and upload a form first.");
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const endpoint = formId ? 'upload/document/map' : 'upload/document';
+      let lastDocumentId = null;
+
+      // Upload all selected documents sequentially so multi-upload actually works
+      // The last successful document ID is used for the workspace navigation
+      for (const fileItem of validFiles) {
+        const formData = new FormData();
+        formData.append('file', fileItem.rawFile);
+        formData.append('userID', userId);
+        formData.append('documentType', 'id_card'); // Defaulting to id_card for now, can be improved
+        if (formId) {
+          formData.append('formID', formId);
+        }
+
+        // eslint-disable-next-line no-await-in-loop
+        const response = await API.post(endpoint, formData, {
+          headers: { 'Content-Type': undefined },
+        });
+
+        if (response.data?.document?._id) {
+          lastDocumentId = response.data.document._id;
+        }
+      }
+
+      if (lastDocumentId) {
+        toast.success(
+          formId
+            ? `Uploaded ${validFiles.length} document(s) and mapped to form`
+            : `Uploaded ${validFiles.length} document(s)`
+        );
+        // Go directly to the form workspace; skip the intermediate review page
+        navigate(`/form-workspace/${formId}/${lastDocumentId}`);
+      } else {
+        toast.error("Upload finished but no document ID was returned. Please try again.");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      if (error.code === "ERR_NETWORK" || error.message?.includes("Network Error")) {
+        toast.error("Cannot reach server. Start the Node backend (port 3000) and AI backend (port 8000).");
+      } else {
+        toast.error(error.response?.data?.message || error.message || "Failed to upload document");
+      }
+    } finally {
+      setUploading(false);
+    }
   };
 
   const documentTypes = [
@@ -56,11 +137,10 @@ const UploadDocuments = () => {
             {['Upload Form', 'Upload Documents', 'Fill & Edit', 'Download'].map((step, index) => (
               <div key={step} className="flex items-center gap-4">
                 <div className={`flex items-center gap-2 ${index <= 1 ? 'text-foreground' : 'text-muted-foreground'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                    index <= 1
-                      ? 'bg-gradient-to-br from-asaan-sky to-asaan-royal text-white' 
-                      : 'bg-secondary'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${index <= 1
+                    ? 'bg-gradient-to-br from-asaan-sky to-asaan-royal text-white'
+                    : 'bg-secondary'
+                    }`}>
                     {index + 1}
                   </div>
                   <span className="hidden sm:block text-sm font-medium">{step}</span>
@@ -129,12 +209,13 @@ const UploadDocuments = () => {
                   Back
                 </Button>
                 <Button
-                  onClick={() => navigate('/form-editor')}
-                  disabled={!hasFiles}
-                  icon={<ArrowRight className="w-5 h-5" />}
+                  type="button"
+                  onClick={handleContinue}
+                  disabled={files.length === 0 || uploading}
+                  icon={uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
                   iconPosition="right"
                 >
-                  Continue to Editor
+                  {uploading ? 'Processing...' : 'Continue to Workspace'}
                 </Button>
               </motion.div>
             </Card>

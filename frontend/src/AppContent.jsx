@@ -23,6 +23,8 @@ import NotFound from "@/pages/NotFound";
 import ForgotPassword from "@/pages/ForgotPassword";
 import VerifyOTP from "@/pages/VerifyOTP";
 import ResetPassword from "@/pages/ResetPassword";
+import FormWorkspace from "@/pages/FormWorkspace";
+import DocumentReview from "@/pages/DocumentReview";
 
 const AppContent = () => {
   const dispatch = useDispatch();
@@ -78,6 +80,22 @@ const AppContent = () => {
                   element={
                     <ProtectedRoute>
                       <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/form-workspace/:formId/:documentId"
+                  element={
+                    <ProtectedRoute>
+                      <FormWorkspace />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/document-review/:formId/:documentId"
+                  element={
+                    <ProtectedRoute>
+                      <DocumentReview />
                     </ProtectedRoute>
                   }
                 />

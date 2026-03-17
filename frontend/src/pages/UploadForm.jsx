@@ -1,18 +1,74 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
-import { FileUp, ArrowRight, FileText, Image, File } from 'lucide-react';
+import { FileUp, ArrowRight, FileText, Image, File, Loader2 } from 'lucide-react';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import UploadBox from '@/components/UploadBox';
 import PageTransition from '@/components/PageTransition';
+import API from '../../axiosInstance';
+import { toast } from 'sonner';
 
 const UploadForm = () => {
-  const [hasFiles, setHasFiles] = useState(false);
+  const [files, setFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
 
-  const handleFilesChange = (files) => {
-    setHasFiles(files.some(f => f.status === 'success' || f.status === 'uploading'));
+  const handleFilesChange = (newFiles) => {
+    setFiles(newFiles || []);
+    if (newFiles?.length > 0) {
+      toast.success("File selected — click 'Continue to Documents' to upload");
+    }
+  };
+
+  const handleContinue = async () => {
+    const uploadedFile = files.find(f => (f.status === 'success' || f.status === 'uploading') && f.rawFile);
+    if (!uploadedFile?.rawFile) {
+      toast.error("Please select a file first (click the box above or drag a PDF/image)");
+      return;
+    }
+
+    if (!user) {
+      toast.error("Please login to upload forms");
+      navigate('/login');
+      return;
+    }
+    const userId = user?.id ?? user?._id;
+    if (!userId) {
+      toast.error("Invalid user session. Please log in again.");
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', uploadedFile.rawFile);
+      formData.append('userID', userId);
+      formData.append('formName', uploadedFile.name);
+
+      const response = await API.post('upload/form', formData, {
+        headers: { 'Content-Type': undefined },
+      });
+
+      if (response.data?.form) {
+        toast.success("Form uploaded and structured successfully!");
+        navigate(`/upload-documents?formId=${response.data.form._id}`);
+      } else {
+        toast.error("Unexpected response. Please try again.");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      const msg = error.response?.data?.message || error.message;
+      if (error.code === "ERR_NETWORK" || error.message?.includes("Network Error")) {
+        toast.error("Cannot reach server. Start the Node backend (port 3000) and AI backend (port 8000).");
+      } else {
+        toast.error(msg || "Failed to upload form");
+      }
+    } finally {
+      setUploading(false);
+    }
   };
 
   const supportedFormats = [
@@ -56,11 +112,10 @@ const UploadForm = () => {
             {['Upload Form', 'Upload Documents', 'Fill & Edit', 'Download'].map((step, index) => (
               <div key={step} className="flex items-center gap-4">
                 <div className={`flex items-center gap-2 ${index === 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                    index === 0 
-                      ? 'bg-gradient-to-br from-asaan-sky to-asaan-royal text-white' 
-                      : 'bg-secondary'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${index === 0
+                    ? 'bg-gradient-to-br from-asaan-sky to-asaan-royal text-white'
+                    : 'bg-secondary'
+                    }`}>
                     {index + 1}
                   </div>
                   <span className="hidden sm:block text-sm font-medium">{step}</span>
@@ -108,16 +163,17 @@ const UploadForm = () => {
 
               <motion.div
                 initial={{ opacity: 0 }}
-                animate={{ opacity: hasFiles ? 1 : 0.5 }}
+                animate={{ opacity: files.length > 0 ? 1 : 0.5 }}
                 className="mt-8 flex justify-end"
               >
                 <Button
-                  onClick={() => navigate('/upload-documents')}
-                  disabled={!hasFiles}
-                  icon={<ArrowRight className="w-5 h-5" />}
+                  type="button"
+                  onClick={handleContinue}
+                  disabled={uploading}
+                  icon={uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
                   iconPosition="right"
                 >
-                  Continue to Documents
+                  {uploading ? 'Uploading...' : 'Continue to Documents'}
                 </Button>
               </motion.div>
             </Card>

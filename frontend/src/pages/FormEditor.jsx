@@ -92,7 +92,7 @@ const FormEditor = () => {
 
   return (
     <PageTransition>
-      <div className="min-h-screen pt-24 pb-12 px-6">
+      <div className="min-h-screen pt-28 pb-12 px-6">
         <div className="floating-shape w-72 h-72 bg-asaan-sky top-32 -left-36" />
         <div className="floating-shape w-56 h-56 bg-asaan-steel bottom-32 -right-28" style={{ animationDelay: '-6s' }} />
 
@@ -123,11 +123,10 @@ const FormEditor = () => {
             {['Upload Form', 'Upload Documents', 'Fill & Edit', 'Download'].map((step, index) => (
               <div key={step} className="flex items-center gap-4">
                 <div className={`flex items-center gap-2 ${index <= 2 ? 'text-foreground' : 'text-muted-foreground'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                    index <= 2
-                      ? 'bg-gradient-to-br from-asaan-sky to-asaan-royal text-white' 
-                      : 'bg-secondary'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${index <= 2
+                    ? 'bg-gradient-to-br from-asaan-sky to-asaan-royal text-white'
+                    : 'bg-secondary'
+                    }`}>
                     {index + 1}
                   </div>
                   <span className="hidden sm:block text-sm font-medium">{step}</span>
@@ -190,11 +189,10 @@ const FormEditor = () => {
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
                               onClick={() => setDownloadFormat(format.value)}
-                              className={`p-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${
-                                downloadFormat === format.value
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-secondary hover:bg-secondary/80'
-                              }`}
+                              className={`p-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${downloadFormat === format.value
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-secondary hover:bg-secondary/80'
+                                }`}
                             >
                               <Icon className="w-4 h-4" />
                               {format.label}
@@ -213,11 +211,10 @@ const FormEditor = () => {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => setCompressionLevel(level)}
-                            className={`flex-1 py-2 px-3 rounded-lg text-sm capitalize transition-colors ${
-                              compressionLevel === level
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-secondary hover:bg-secondary/80'
-                            }`}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm capitalize transition-colors ${compressionLevel === level
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-secondary hover:bg-secondary/80'
+                              }`}
                           >
                             {level}
                           </motion.button>

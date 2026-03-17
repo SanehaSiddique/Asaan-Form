@@ -17,6 +17,11 @@ from app.config import settings
 from app.chatbot.document_loader import load_and_chunk_file
 from app.chatbot.vectorstore import DocumentStore
 from app.chatbot.rag_chain import get_rag_chain_with_sources
+from app.utils.llm import get_llm
+from langchain_core.messages import HumanMessage
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/chatbot", tags=["Chatbot"])
@@ -114,6 +119,15 @@ async def ingest_faq_files(
     })
 
 
+def _answer_with_llm_fallback(question: str) -> str:
+    """When RAG is unavailable, answer directly with the LLM."""
+    llm = get_llm()
+    response = llm.invoke([HumanMessage(
+        content=f"You are a helpful form and document assistant. Answer concisely and helpfully.\n\nUser question: {question}"
+    )])
+    return response.content if hasattr(response, "content") else str(response)
+
+
 @router.post("/ask")
 async def ask_chatbot(
     question: str = Query(..., description="User question"),
@@ -121,7 +135,7 @@ async def ask_chatbot(
     k: int = Query(3, ge=1, le=10, description="Top-k chunks to retrieve"),
 ):
     """
-    Ask a question. The answer is generated using retrieved context from the vector store.
+    Ask a question. Uses RAG over the knowledge base when available; falls back to direct LLM when not.
     """
     try:
         qa = get_rag_chain_with_sources(collection_name=collection_name, k=k)
@@ -144,4 +158,15 @@ async def ask_chatbot(
             "sources": sources,
         })
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.warning("RAG ask failed, using LLM fallback: %s", e)
+        try:
+            answer = _answer_with_llm_fallback(question)
+            return JSONResponse(content={
+                "collection_name": collection_name,
+                "question": question,
+                "answer": answer,
+                "sources": [],
+            })
+        except Exception as fallback_err:
+            logger.exception("LLM fallback failed")
+            raise HTTPException(status_code=500, detail=str(fallback_err))
