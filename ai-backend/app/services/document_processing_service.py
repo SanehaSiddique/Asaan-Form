@@ -224,7 +224,7 @@ class DocumentProcessingService:
                                 import time
                                 start = time.time()
                                 
-                                from app.services.ocr_service import run_ocr, group_lines
+                                from app.services.ocr_service import run_ocr
                                 images_np = self.docling_service._convert_pdf_to_images(file_path) # Need images as numpy
                                 # For simplicity, let's use the first page's boxes
                                 words, boxes = run_ocr(images_np[0])
@@ -786,7 +786,7 @@ Return ONLY valid JSON with English keys and translated values.
             
             # Artificial delay between documents if not the last one
             if i < len(files):
-                print(f"  Waiting 2s before next document...")
+                print("  Waiting 2s before next document...")
                 await asyncio.sleep(2)
         
         return {

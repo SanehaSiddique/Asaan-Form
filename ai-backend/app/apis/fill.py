@@ -1,5 +1,4 @@
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -36,7 +35,7 @@ async def map_existing_document_endpoint(
         f.write(f"document_filename: {document_filename}\n")
         f.write(f"document_filenames: {document_filenames}\n")
 
-    print(f"\n📥 RECEIVED MAPPING REQUEST:")
+    print("\n📥 RECEIVED MAPPING REQUEST:")
     print(f"  user_id: {user_id}")
     print(f"  form_id: {form_id}")
     print(f"  document_filename (singular): {document_filename}")
@@ -262,7 +261,7 @@ async def fill_existing_endpoint(
     - document_filenames: comma-separated AI backend saved document filenames (from /document/upload response)
     - return_pdf: when true, stream the filled PDF; when false, return JSON mapping
     """
-    print(f"\n📥 RECEIVED FILL-EXISTING REQUEST:")
+    print("\n📥 RECEIVED FILL-EXISTING REQUEST:")
     print(f"  user_id: {user_id}")
     print(f"  form_id: {form_id}")
     print(f"  document_filename (singular): {document_filename}")

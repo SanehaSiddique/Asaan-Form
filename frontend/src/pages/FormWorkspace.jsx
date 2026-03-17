@@ -99,8 +99,13 @@ const FormWorkspace = () => {
                 fillDataFields.forEach((f) => {
                     const key = normalize(f.field_key ?? f.field_name);
                     const nameKey = normalize((f.field_name ?? f.field_key ?? '').toString().replace(/_/g, ' '));
-                    if (key) valueByKey[key] = f;
-                    if (nameKey && !valueByKey[nameKey]) valueByKey[nameKey] = f;
+                    
+                    if (key && !['__proto__', 'constructor', 'prototype'].includes(key)) {
+                        valueByKey[key] = f;
+                    }
+                    if (nameKey && !['__proto__', 'constructor', 'prototype'].includes(nameKey) && !valueByKey[nameKey]) {
+                        valueByKey[nameKey] = f;
+                    }
                 });
 
                 // Canonical list: form schema order when available, so React form rows and labels are stable
@@ -161,6 +166,8 @@ const FormWorkspace = () => {
     }, [documentId, formId]);
 
     const handleFieldChange = (index, value) => {
+        if (typeof index !== 'number' && typeof index !== 'string') return;
+        if (String(index).includes('__proto__') || String(index).includes('constructor')) return;
         setFormValues(prev => ({ ...prev, [index]: value }));
     };
 

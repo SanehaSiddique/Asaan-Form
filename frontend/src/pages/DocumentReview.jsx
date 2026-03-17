@@ -79,8 +79,9 @@ const DocumentReview = () => {
     };
 
     const handleFieldChange = (index, newValue) => {
+        if (typeof index !== 'number' || index < 0 || index >= mapping.length) return;
         const newMapping = [...mapping];
-        newMapping[index].value = newValue;
+        newMapping[index] = { ...newMapping[index], value: newValue };
         setMapping(newMapping);
     };
 
