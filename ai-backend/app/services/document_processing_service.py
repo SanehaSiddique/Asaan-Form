@@ -10,6 +10,7 @@ This is SEPARATE from Form Processing - documents provide DATA to fill forms.
 """
 
 import json
+import asyncio
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
@@ -38,6 +39,7 @@ except ImportError:
 from app.services.ocr_service import extract_english_text
 from app.services.urdu_ocr_service import extract_urdu_text
 from app.utils.llm import get_llm
+from app.services.form_filling_service import form_filling_service
 
 
 class DocumentProcessingService:
@@ -127,7 +129,9 @@ class DocumentProcessingService:
         result = {
             "english_text": None,
             "urdu_text": None,
-            "combined_text": None
+            "combined_text": None,
+            "boxes": [],
+            "docling_json": None
         }
         
         file_path_str = str(file_path)
@@ -160,6 +164,7 @@ class DocumentProcessingService:
                         result["urdu_text"] = ""
                     
                     result["combined_text"] = markdown_text
+                    result["docling_json"] = docling_result.get("json")
                     return result
                     
                 except Exception as docling_error:
@@ -219,14 +224,22 @@ class DocumentProcessingService:
                                 import time
                                 start = time.time()
                                 
-                                page_english = extract_english_text(temp_image_path)
-                                
-                                elapsed = time.time() - start
-                                if elapsed > 60:
-                                    print(f"    ⚠️ Page {i} OCR took {elapsed:.1f}s (slow)")
+                                from app.services.ocr_service import run_ocr, group_lines
+                                images_np = self.docling_service._convert_pdf_to_images(file_path) # Need images as numpy
+                                # For simplicity, let's use the first page's boxes
+                                words, boxes = run_ocr(images_np[0])
+                                page_english = "\n".join([w for w in words])
                                 
                                 if page_english:
+                                    elapsed = time.time() - start
                                     all_english_text.append(f"[Page {i}]\n{page_english}")
+                                    # Store boxes with their associated text
+                                    for w, b in zip(words, boxes):
+                                        result["boxes"].append({
+                                            "text": w,
+                                            "box": b,
+                                            "page": i
+                                        })
                                     print(f"    ✓ Page {i} English OCR: {len(page_english)} chars in {elapsed:.1f}s")
                                 else:
                                     print(f"    ⚠️ Page {i} English OCR: No text found")
@@ -278,8 +291,13 @@ class DocumentProcessingService:
             # Extract English text
             if "english" in languages:
                 try:
-                    english_text = extract_english_text(file_path_str)
+                    from app.services.ocr_service import run_ocr, load_input
+                    img = load_input(file_path)
+                    words, boxes = run_ocr(img)
+                    english_text = "\n".join(words)
                     result["english_text"] = english_text
+                    # Store as structured snippets
+                    result["boxes"] = [{"text": w, "box": b, "page": 1} for w, b in zip(words, boxes)]
                     print(f"  ✓ English OCR: {len(english_text)} characters")
                 except Exception as e:
                     print(f"  ⚠️ English OCR failed: {e}")
@@ -371,7 +389,7 @@ class DocumentProcessingService:
             return {"error": "No text extracted from document"}
         
         try:
-            response = self.llm.invoke(prompt)
+            response = await self.llm.ainvoke(prompt)
             content = response.content
             
             # Parse JSON from response
@@ -539,6 +557,7 @@ Return ONLY valid JSON with English keys and translated values.
             result["data"]["ocr"] = {
                 "english_length": len(ocr_result.get("english_text") or ""),
                 "urdu_length": len(ocr_result.get("urdu_text") or ""),
+                "boxes": ocr_result.get("boxes", [])
             }
             
             # Step 3: Extract structured data
@@ -577,6 +596,132 @@ Return ONLY valid JSON with English keys and translated values.
             print(f"\n❌ Pipeline error: {error_msg}")
         
         return result
+
+    async def map_to_form(
+        self,
+        user_id: str,
+        document_filenames: List[str],
+        form_id: str
+    ) -> Dict:
+        """
+        Map one or more already processed documents to a specific form schema.
+        
+        Args:
+            user_id: User identifier
+            document_filenames: List of document filenames
+            form_id: ID of the form to map against
+            
+        Returns:
+            Mapping result
+        """
+        docs_dir = settings.get_user_documents_dir(user_id)
+        
+        # 1. Load document OCR/Extraction for ALL files
+        combined_doc_json = {"pages": [], "boxes": [], "all_texts": []}
+        all_doc_stems = []
+
+        for document_filename in document_filenames:
+            doc_path = docs_dir / document_filename
+            if not doc_path.exists():
+                print(f"  ⚠️ Document not found skipping: {document_filename}")
+                continue
+            
+            all_doc_stems.append(doc_path.stem)
+            extraction_path = docs_dir / f"{doc_path.stem}_extracted.json"
+            if not extraction_path.exists():
+                print(f"  ⚠️ Extraction not found for: {document_filename}")
+                continue
+                
+            with open(extraction_path, 'r', encoding='utf-8') as f:
+                doc_data = json.load(f)
+                ocr_data = doc_data.get("ocr", {})
+                
+                # Merge into combined context
+                # Support docling format
+                docling_json = ocr_data.get("docling_json")
+                if docling_json:
+                    if "pages" in docling_json:
+                        # Re-index page numbers to avoid collision if needed, 
+                        # but snippets usually just care about absolute IDs
+                        combined_doc_json["pages"].extend(docling_json["pages"])
+                
+                # Support boxes format
+                if "boxes" in ocr_data:
+                    combined_doc_json["boxes"].extend(ocr_data["boxes"])
+                
+                # Support form_processing combine format if present
+                if "all_texts" in ocr_data:
+                    combined_doc_json["all_texts"].extend(ocr_data["all_texts"])
+        
+        if not combined_doc_json["pages"] and not combined_doc_json["boxes"] and not combined_doc_json["all_texts"]:
+             raise HTTPException(status_code=404, detail="No readable extraction data found for the provided documents")
+            
+        # 2. Load Form Schema
+        form_fields_path = settings.get_user_forms_dir(user_id) / form_id / "output" / "form_fields.json"
+        if not form_fields_path.exists():
+            # Fallback to form_fields.json in the form root if output/ doesn't exist
+            form_fields_path = settings.get_user_forms_dir(user_id) / form_id / "form_fields.json"
+            if not form_fields_path.exists():
+                raise HTTPException(status_code=404, detail=f"Form schema {form_id} not found")
+            
+        with open(form_fields_path, 'r', encoding='utf-8') as f:
+            form_data = json.load(f)
+            # form_fields.json structure might vary, but we expect list of fields
+            if "form_fields" in form_data:
+                form_schema = form_data["form_fields"]
+            elif isinstance(form_data, list):
+                form_schema = form_data
+            else:
+                form_schema = []
+
+        # 3. Perform Semantic Mapping
+        print(f"\n📂 Mapping document(s) {', '.join(document_filenames)} to form {form_id}...")
+        
+        mapping = await form_filling_service.map_document_to_form(
+            combined_doc_json,
+            form_schema
+        )
+
+        # Normalize each item for frontend: field_key, coordinates, target_box, value, page_number
+        fields = []
+        for m in mapping:
+            coords = m.get("coordinates") or m.get("target_box")
+            box = coords if isinstance(coords, (list, tuple)) and len(coords) >= 4 else None
+            fields.append({
+                "field_key": m.get("field_key") or m.get("field"),
+                "field_name": m.get("field_name"),
+                "field_type": m.get("field_type") or "text_input",
+                "value": m.get("value"),
+                "coordinates": box,
+                "target_box": box,
+                "page_number": m.get("page_number", 1),
+                "source_boxes": m.get("source_boxes") or [],
+            })
+
+        final_json = {
+            "form_id": form_id,
+            "fields": fields,
+        }
+        
+        # 4. Save the mapping using the first document's stem as reference or a combined name
+        reference_stem = all_doc_stems[0] if all_doc_stems else "multi"
+        mapping_path = docs_dir / f"{reference_stem}_mapped_{form_id}.json"
+        with open(mapping_path, 'w', encoding='utf-8') as f:
+            json.dump({
+                "form_id": form_id,
+                "sources": document_filenames,
+                "mapping": mapping,
+                "final_json": final_json,
+                "mapped_at": datetime.now().isoformat()
+            }, f, indent=2, ensure_ascii=False)
+            
+        return {
+            "success": True,
+            "form_id": form_id,
+            "mapping": mapping,
+            "final_json": final_json,
+            "path": str(mapping_path)
+        }
     
     def _print_summary(self, result: Dict):
         """Print processing summary"""
@@ -638,6 +783,11 @@ Return ONLY valid JSON with English keys and translated values.
                     # Keep non-null values, prefer later documents
                     if value is not None:
                         all_extracted[key] = value
+            
+            # Artificial delay between documents if not the last one
+            if i < len(files):
+                print(f"  Waiting 2s before next document...")
+                await asyncio.sleep(2)
         
         return {
             "user_id": user_id,

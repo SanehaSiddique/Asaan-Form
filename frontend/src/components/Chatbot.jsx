@@ -1,28 +1,22 @@
 import { useState, useRef, useEffect } from "react";
+import { useSelector } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, Bot, User } from "lucide-react";
-
-const DUMMY_RESPONSES = [
-  "Hello! I'm your AI Form Assistant. How can I help you today?",
-  "I can help you fill out forms automatically using AI. Just upload your documents!",
-  "Need help with a specific form? I can guide you through the process.",
-  "You can upload your CNIC, transcripts, and other documents. I'll extract the relevant information.",
-  "The form editor allows you to review and modify any auto-filled data before saving.",
-  "You can download your completed forms in PDF or DOCX format.",
-  "Is there anything specific you'd like to know about ASAAN FORM?",
-];
+import API from "../../axiosInstance";
 
 const Chatbot = () => {
+  const { user } = useSelector((state) => state.auth);
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
       id: "1",
-      text: "Hi! I'm ASAAN, your AI form assistant. How can I help you today?",
+      text: "Hi! I'm ASAAN, your AI form assistant. Ask me anything about your forms or documents.",
       sender: "bot",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -33,7 +27,7 @@ const Chatbot = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage = {
@@ -46,15 +40,38 @@ const Chatbot = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
 
-    setTimeout(() => {
+    try {
+      setLoading(true);
+      const userId = user?.id ?? user?._id ?? "anonymous";
+      // Use per-user collection so knowledge and history are isolated
+      const collectionName = `user_${userId}`;
+      const params = new URLSearchParams();
+      params.set("question", input.trim());
+      params.set("collection_name", collectionName);
+
+      const response = await API.post(`chatbot/ask?${params.toString()}`);
+      const answer = response.data?.answer || "Sorry, I could not generate a response.";
+
       const botMessage = {
         id: crypto.randomUUID(),
-        text: DUMMY_RESPONSES[Math.floor(Math.random() * DUMMY_RESPONSES.length)],
+        text: answer,
         sender: "bot",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, botMessage]);
-    }, 1000);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Chatbot error:", error);
+      const botMessage = {
+        id: crypto.randomUUID(),
+        text: "Sorry, I ran into a problem answering that. Please try again.",
+        sender: "bot",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, botMessage]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -159,14 +176,15 @@ const Chatbot = () => {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Type a message..."
+                  placeholder={user ? "Ask about your forms or documents..." : "Login to chat about your forms..."}
                   className="flex-1 px-4 py-2 rounded-xl bg-secondary border-none focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                  disabled={loading}
                 />
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleSend}
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || loading}
                   className="w-10 h-10 rounded-xl bg-gradient-to-br from-asaan-steel to-asaan-royal flex items-center justify-center disabled:opacity-50"
                 >
                   <Send className="w-4 h-4 text-white" />

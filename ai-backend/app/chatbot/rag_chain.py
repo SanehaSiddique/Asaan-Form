@@ -8,9 +8,9 @@ from typing import Optional
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-from langchain_openai import ChatOpenAI
 
 from app.config import settings
+from app.utils.llm import get_llm as get_centralized_llm
 from app.chatbot.vectorstore import init_milvus, DocumentStore
 
 
@@ -40,21 +40,10 @@ def get_retriever(collection_name: str = "rag_langchain", k: int = 3):
 
 def get_llm(model: Optional[str] = None):
     """
-    Configure OpenRouter-compatible LLM via LangChain ChatOpenAI.
+    Configure Groq LLM using the centralized loader.
     """
-    key = settings.OPENROUTER_API_KEY
-    if not key:
-        raise ValueError("OPENROUTER_API_KEY not set in config/.env")
-
-    model_name = model or settings.LLM_MODEL
-
-    return ChatOpenAI(
-        model=model_name,
-        api_key=key,
-        base_url=settings.OPENROUTER_BASE_URL,
-        temperature=settings.LLM_TEMPERATURE,
-        max_tokens=min(settings.LLM_MAX_TOKENS, 2048),
-    )
+    # Note: model override is ignored for now to maintain consistency with centralized config
+    return get_centralized_llm()
 
 
 # ---- Prompt for RAG ----

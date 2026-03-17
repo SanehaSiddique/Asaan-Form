@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 from pathlib import Path
 from typing import List
-from paddleocr import PaddleOCR
 from pdf2image import convert_from_path
 import threading
 
@@ -19,32 +18,28 @@ def get_ocr():
     
     if _ocr_instance is not None:
         return _ocr_instance
-    
+        
     with _ocr_lock:
-        # Double-check pattern
+        # Double-check inside lock
         if _ocr_instance is not None:
             return _ocr_instance
-        
-        if not _ocr_initializing:
-            _ocr_initializing = True
-            print("  ⏳ Initializing PaddleOCR (this may take 30-60 seconds on first run)...")
-            try:
-                # Use lighter models for faster initialization
-                _ocr_instance = PaddleOCR(
-                    # use_textline_orientation=True,
-                    lang="en",
-                    enable_mkldnn=False,
-                    # use_angle_cls=False,  # Disable angle classification for speed
-                    # show_log=False  # Reduce logging overhead
-                )
-                print("  ✓ PaddleOCR initialized successfully")
-            except Exception as e:
-                print(f"  ❌ PaddleOCR initialization failed: {e}")
-                raise
-            finally:
-                _ocr_initializing = False
-    
-    return _ocr_instance
+            
+        _ocr_initializing = True
+        try:
+            from paddleocr import PaddleOCR
+            print("Initializing PaddleOCR...")
+            # use_textline_orientation: helps with rotated text
+            # lang='en': English model (works best for structured forms)
+            # enable_mkldnn=False: fixes "(Unimplemented) ConvertPirAttribute2RuntimeAttribute not support" error on some CPUs
+            _ocr_instance = PaddleOCR(use_textline_orientation=True, lang='en', enable_mkldnn=False)
+            print("PaddleOCR initialized successfully")
+            return _ocr_instance
+        except Exception as e:
+            print(f"Error initializing PaddleOCR: {e}")
+            raise
+        finally:
+            _ocr_initializing = False
+
 
 def preload_ocr():
     """

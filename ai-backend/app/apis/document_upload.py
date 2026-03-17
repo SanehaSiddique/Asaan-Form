@@ -315,6 +315,67 @@ async def process_existing_document(
         )
 
 
+@router.post("/map/{user_id}/{filename}/{form_id}")
+async def map_document_to_form(
+    user_id: str,
+    filename: str,
+    form_id: str
+):
+    """
+    Map an already processed document to a specific form schema.
+    """
+    try:
+        result = await document_processing_service.map_to_form(
+            user_id, filename, form_id
+        )
+        return JSONResponse(content=result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Mapping failed: {str(e)}")
+
+
+@router.post("/upload-and-map/{user_id}/{form_id}")
+async def upload_and_map_document(
+    user_id: str,
+    form_id: str,
+    file: UploadFile = File(...),
+    document_type: Optional[str] = Query(None),
+    languages: str = Query("english,urdu")
+):
+    """
+    Upload, process OCR, and then semantically map to a form.
+    """
+    try:
+        # 1. Process document (OCR + Extraction)
+        lang_list = [l.strip().lower() for l in languages.split(",")]
+        proc_result = await document_processing_service.process_document(
+            user_id, file, document_type, lang_list
+        )
+        
+        if not proc_result.get("success"):
+            return JSONResponse(content=proc_result, status_code=500)
+            
+        # 2. Map to form
+        filename = proc_result["data"]["file_info"]["saved_filename"]
+        map_result = await document_processing_service.map_to_form(
+            user_id, filename, form_id
+        )
+        
+        # 3. Combine results
+        combined = {
+            "success": True,
+            "processing": proc_result,
+            "mapping": map_result
+        }
+        return JSONResponse(content=combined)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload and map failed: {str(e)}")
+
+
 # ============================================================================
 # USER DATA MANAGEMENT
 # ============================================================================

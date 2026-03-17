@@ -1,4 +1,5 @@
 import json
+import asyncio
 from typing import Dict, List, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
 from app.utils.llm import get_llm
@@ -61,6 +62,10 @@ class FormExtractionService:
                 all_extractions.append(extraction)
             else:
                 print(f"    ⚠️  Chunk {i} failed")
+            
+            # Artificial delay to avoid rate limiting
+            if i < len(chunks):
+                await asyncio.sleep(2)
         
         # Merge all extractions
         merged = self._merge_extractions(all_extractions)

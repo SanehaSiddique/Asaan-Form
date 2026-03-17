@@ -234,7 +234,7 @@ const About = () => {
                   className="inline-flex items-center gap-2 text-asaan-royal hover:underline"
                 >
                   <Mail className="w-5 h-5" />
-                  asaanform@gmail.com
+                  asaanform.fyp@gmail.com
                 </a>
               </Card>
             </motion.div>

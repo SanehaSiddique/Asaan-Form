@@ -1,9 +1,9 @@
-# FastAPI and web
+# # FastAPI and web
 fastapi
 uvicorn[standard]
 python-multipart
 
-# LangChain and LLM
+# # LangChain and LLM
 langgraph
 langchain
 langchain-community
@@ -12,26 +12,31 @@ langchain-text-splitters
 langchain-huggingface
 langchain-milvus
 
-# Configuration
+# # Configuration
 python-dotenv
 pydantic
 pydantic-settings
 
-# Document processing
+# # Document processing
 docling
 pdf2image
 pillow
 pymupdf
 pypdf
-unstructured
-unstructured[pdf]
+# # Replace the old unstructured version with a newer one
+numba>=0.59.0  # supports Python 3.12
+llvmlite>=0.43.0  # supports Python 3.12
+# unstructured>=0.15.0 # or latest version compatible with Python 3.12
 
 
-# OCR (optional - for Urdu/multilingual)
-paddleocr
+
+
+# # OCR (for Urdu/multilingual)
+paddleocr>=2.7.0
 paddlepaddle
+shapely
 
-# Utilities
+# # Utilities
 aiofiles
 
 

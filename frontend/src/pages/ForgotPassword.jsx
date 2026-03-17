@@ -13,13 +13,13 @@ import PageTransition from '@/components/PageTransition';
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [localError, setLocalError] = useState('');
-  
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  
+
   // Get state from Redux
   const { loading, error: reduxError, resetStep, resetEmail } = useSelector((state) => state.auth);
-  
+
   console.log('🔍 ForgotPassword - Redux State:', { resetStep, resetEmail, loading });
 
   // Clear errors on component mount
@@ -61,7 +61,7 @@ const ForgotPassword = () => {
     console.log('📨 Dispatch result:', result);
     console.log('Result type:', result.type);
     console.log('Result payload:', result.payload);
-    
+
     // Check what happened
     if (forgotPassword.fulfilled.match(result)) {
       console.log('✅ forgotPassword.fulfilled - Success!');
@@ -95,27 +95,27 @@ const ForgotPassword = () => {
               >
                 <CheckCircle className="w-8 h-8 text-white" />
               </motion.div>
-              
+
               <h1 className="font-display text-2xl font-bold mb-2">Check Your Email</h1>
               <p className="text-muted-foreground mb-6">
-                We've sent a verification code to <span className="font-medium text-foreground">{email}</span>. 
+                We've sent a verification code to <span className="font-medium text-foreground">{email}</span>.
                 Please enter it below to reset your password.
               </p>
-              
+
               <div className="space-y-4">
-              <Button 
-                onClick={() => {
+                <Button
+                  onClick={() => {
                     // Save email to localStorage before navigating
                     localStorage.setItem('asaan_reset_email', email);
                     navigate('/verify-otp');
-                }}
-                className="w-full"
-                size="lg"
+                  }}
+                  className="w-full"
+                  size="lg"
                 >
-                Enter Verification Code
+                  Enter Verification Code
                 </Button>
-                
-                <Button 
+
+                <Button
                   onClick={() => dispatch(clearResetState())}
                   variant="outline"
                   className="w-full"
@@ -123,7 +123,7 @@ const ForgotPassword = () => {
                   Use Different Email
                 </Button>
               </div>
-              
+
               <div className="mt-6 pt-6 border-t border-border">
                 <p className="text-sm text-muted-foreground">
                   Didn't receive the email?{' '}
@@ -209,8 +209,8 @@ const ForgotPassword = () => {
             </form>
 
             <div className="mt-6 text-center">
-              <Link 
-                to="/login" 
+              <Link
+                to="/login"
                 className="inline-flex items-center gap-2 text-asaan-royal hover:underline font-medium transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />

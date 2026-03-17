@@ -1,21 +1,31 @@
-const express = require('express');
-var mongoose = require('mongoose');
-const cors = require('cors');
-const authRoutes = require("./App/routes/authRoutes");
 require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const { connectDB } = require("./app/config/db.config");
+const authRoutes = require("./app/routes/authRoutes");
+const uploadRoutes = require("./app/routes/uploadRoutes");
+const chatbotRoutes = require("./app/routes/chatbotRoutes");
 
 const app = express();
 
 app.use(express.json());   // for parsing json data
 app.use(cors());           // to allow cross-origin requests
 
-app.use('/api/auth', authRoutes);
+// Root route for health check
+app.get('/', (req, res) => {
+    res.json({ message: "Asaan-Form Node.js Backend is running", status: "ok" });
+});
 
-// it is the connectivity of mongoose with the database
-mongoose.connect(process.env.dbURL)     // it is a kind of promise so we can use .then() and .catch() methods
-.then(() => {
-    console.log('Connected to MongoDB...')
-    app.listen(process.env.PORT);
-}).catch(
-    (err) => console.error('Error:', err)
-);
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/chatbot', chatbotRoutes);
+
+// Database connection & Server start
+const PORT = process.env.PORT || 3000;
+connectDB().then(() => {
+    const server = app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+    server.timeout = 600000; // 10 minutes to allow for long AI processing
+});
