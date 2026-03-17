@@ -61,7 +61,7 @@ Handles business logic and user data.
 ```bash
 cd node-backend
 npm install
-npm run dev
+node server.js
 ```
 
 ### 3. Frontend (React)
@@ -102,4 +102,4 @@ Once all sub-projects are configured, start them in the order:
 2. **Node Backend**
 3. **Frontend**
 
-Access the application at the URL provided by the frontend.
+Access the application at the URL provided by the frontend (`http://localhost:8080/`).
