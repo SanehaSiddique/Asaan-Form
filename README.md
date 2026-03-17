@@ -69,7 +69,7 @@ Asaan-Form follows a robust 3-tier architecture:
    ```bash
    cd node-backend
    npm install
-   npm run dev
+   node server.js
    ```
 
    **Frontend:**
