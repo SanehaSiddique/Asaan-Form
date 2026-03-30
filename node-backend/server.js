@@ -24,8 +24,10 @@ app.use('/api/chatbot', chatbotRoutes);
 // Database connection & Server start
 const PORT = process.env.PORT || 3000;
 connectDB().then(() => {
+    const { initWebSocket } = require('./app/websocket/wsServer');
     const server = app.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
     });
+    initWebSocket(server);
     server.timeout = 600000; // 10 minutes to allow for long AI processing
 });

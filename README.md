@@ -1,6 +1,6 @@
 # 📄 Asaan-Form: Your AI Form Assistant
 
-[![FYP Phase I](https://img.shields.io/badge/FYP-Phase_I-blue.svg)](https://github.com/sanehasiddique/Asaan-Form)
+[![FYP Phase II](https://img.shields.io/badge/FYP-Phase_II_95%25-blue.svg)](https://github.com/sanehasiddique/Asaan-Form)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Stack: MERN + FastAPI + AI](https://img.shields.io/badge/Stack-MERN_%2B_FastAPI_%2B_AI-green.svg)](#-technology-stack)
 
@@ -8,23 +8,26 @@
 
 ---
 
-## ✨ Key Features
+## ✨ Key Features (Phase II Updates)
 
 - 🤖 **Multi-Agent Orchestration**: Powered by **LangGraph**, utilizing specialized agents for intent detection, form processing, and document analysis.
-- 🌍 **Multilingual OCR**: High-accuracy text extraction for both **English and Urdu** using PaddleOCR, PaddleX, and UTRNet.
-- 💬 **RAG Chatbot**: An intelligent FAQ assistant that uses Retrieval-Augmented Generation (RAG) with **Milvus/Zilliz Cloud** vector store.
+- 🌍 **Multilingual OCR Microservice**: High-accuracy text extraction for both **English and Urdu** using PaddleOCR and UTRNet, now decoupled for maximum stability.
+- 💬 **Reliable Chatbot Pipeline**: A stabilized interaction loop that supports **multi-field updates** in a single go, ensured by strict `FIELD_UPDATE` marker protocols.
+- 🔄 **Self-Healing Validation**: Includes an automatic **3-retry loop** for auto-mapping. If the AI detects a hallucination, it attempts to "fix itself" before handing off to the user.
+- 🧠 **Flexible Semantic Mapping**: The AI now uses "common sense" reasoning (e.g., automatically inferring Nationality from a CNIC) and is resilient to OCR noise.
+- 🛡️ **Payload Protection**: Automatic OCR truncation to prevent `413 Request Too Large` errors during heavy document processing.
 - 📑 **Advanced Layout Analysis**: Deep document understanding using **Docling** to extract fields, coordinates, and structural elements.
-- 🎨 **Modern Dashboard**: A responsive and intuitive user interface built with **React** and **Tailwind CSS**.
 
 ---
 
 ## 🏗️ System Architecture
 
-Asaan-Form follows a robust 3-tier architecture:
+Asaan-Form follows a robust, decoupled architecture:
 
-1.  **Frontend (React + Redux)**: The user-facing dashboard for document uploads, real-time tracking, and chatbot interaction.
-2.  **Node.js Backend**: Handles user authentication, session management, and persists application data in **MongoDB**.
-3.  **AI Backend (FastAPI + LangGraph)**: The "brain" of the system, orchestrating AI agents and processing intensive OCR/RAG tasks.
+1.  **Frontend (React + Redux)**: Intuitive dashboard with real-time WebSocket sync for chatbot field updates.
+2.  **Node.js Backend**: Handles user authentication, MongoDB persistence, and acts as the WebSocket gateway.
+3.  **AI Backend (FastAPI + LangGraph)**: The "brain," orchestrating agents and processing RAG tasks (Port 8000).
+4.  **OCR Microservice**: A dedicated worker for PaddleOCR and UTRNet to ensure memory efficiency and prevent event-loop blocking (Port 8001).
 
 ---
 
@@ -34,9 +37,10 @@ Asaan-Form follows a robust 3-tier architecture:
 | :--- | :--- |
 | **Frontend** | React.js, Tailwind CSS, Redux Toolkit |
 | **Backends** | Node.js (Express), FastAPI (Python) |
-| **AI & NLP** | LangChain, LangGraph, PaddleOCR, PaddleX, Docling |
+| **OCR Service** | PaddleOCR, UTRNet, YOLOv8 (Urdu Doc) |
+| **AI & NLP** | LangChain, LangGraph, Docling |
 | **LLM** | Meta Llama 3.3 (via OpenRouter/ Groq) |
-| **Databases** | MongoDB (User data), Milvus/Zilliz (Vector store) |
+| **Databases** | MongoDB (User data), Milvus (Vector store) |
 
 ---
 
@@ -45,9 +49,10 @@ Asaan-Form follows a robust 3-tier architecture:
 ### Prerequisites
 - Node.js ≥ v18
 - Python ≥ v3.10
-- MongoDB & Milvus (Zilliz Cloud)
+- MongoDB
+- NVIDIA GPU (Optional, but recommended for OCR speed)
 
-### Installation
+### Installation & Run
 
 1. **Clone the repo:**
    ```bash
@@ -57,13 +62,15 @@ Asaan-Form follows a robust 3-tier architecture:
 
 2. **Setup Services (Run in separate terminals):**
 
-   **AI Backend:**
+   **AI Backend & OCR Service:**
    ```bash
    cd ai-backend
-   python -m venv venv && source venv/bin/activate  # venv\Scripts\activate on Windows
-   pip install -r requirements.txt
-   python main.py
+   # On Windows:
+   ./start.bat
+   # On Linux/Mac:
+   chmod +x start.sh && ./start.sh
    ```
+   *Note: This starts the main API on port 8000 and the OCR worker on port 8001.*
 
    **Node Backend:**
    ```bash
@@ -79,29 +86,13 @@ Asaan-Form follows a robust 3-tier architecture:
    npm run dev
    ```
 
-3. **Configure Environment:**
-   Ensure `.env` files are set up in `ai-backend/` and `node-backend/` as per the provided `.env.example` files (or see the [Setup Guide](docs/setup.md)).
-
----
-
-## 📁 Project Structure
-
-```text
-asaan-form/
-├── ai-backend/       # FastAPI, Agents, OCR, RAG logic
-├── node-backend/     # Express API, Auth, MongoDB Models
-├── frontend/         # React SPA, Redux Store
-├── docs/             # Documentation & Requirements
-└── requirements.md   # Detailed requirements
-```
-
 ---
 
 ## 👥 Team Members
 
 | Name | Role | Contribution |
 | :--- | :--- | :--- |
-| **Saneha Siddique** | Group Leader | Backend Orchestration, UrduOCR, Dynamic React Form Rendering |
+| **Saneha Siddique** | Group Leader | Backend Orchestration, UrduOCR, Dynamic React Mapping |
 | **Zainab Khalid** | OCR Specialist | OCR & Layout, Form Extraction, Semantic Mapping |
 | **Faiqa Mustafa** | Frontend Dev | UI/UX Design, State Management, Integration |
 | **Aqsa Hussain** | AI/RAG Dev | Requirement Analysis, RAG Implementation, Node Backend |
@@ -112,6 +103,5 @@ asaan-form/
 
 Distributed under the MIT License. Developed for the Final Year Project, Department of Computer Science, **University of the Punjab**.
 
-**Version**: 2.0.0 (Phase-II 80% Complete)
-
+**Version**: 2.1.0 (Phase-II 95% Complete)  
 **Last Updated**: March 2026

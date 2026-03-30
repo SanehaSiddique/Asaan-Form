@@ -2,7 +2,7 @@
 import cv2
 import numpy as np
 from pathlib import Path
-from typing import List
+from typing import List, Tuple, Dict, Any
 from pdf2image import convert_from_path
 import threading
 
@@ -20,7 +20,6 @@ def get_ocr():
         return _ocr_instance
         
     with _ocr_lock:
-        # Double-check inside lock
         if _ocr_instance is not None:
             return _ocr_instance
             
@@ -28,9 +27,6 @@ def get_ocr():
         try:
             from paddleocr import PaddleOCR
             print("Initializing PaddleOCR...")
-            # use_textline_orientation: helps with rotated text
-            # lang='en': English model (works best for structured forms)
-            # enable_mkldnn=False: fixes "(Unimplemented) ConvertPirAttribute2RuntimeAttribute not support" error on some CPUs
             _ocr_instance = PaddleOCR(use_textline_orientation=True, lang='en', enable_mkldnn=False)
             print("PaddleOCR initialized successfully")
             return _ocr_instance
@@ -44,7 +40,6 @@ def get_ocr():
 def preload_ocr():
     """
     Preload OCR instance in background to avoid blocking first request
-    Call this at application startup
     """
     def _preload():
         try:
@@ -52,46 +47,25 @@ def preload_ocr():
         except Exception as e:
             print(f"Warning: Failed to preload OCR: {e}")
     
-    # Start preloading in background thread
     thread = threading.Thread(target=_preload, daemon=True)
     thread.start()
     return thread
 
 def load_input(path: Path) -> np.ndarray:
-    """
-    Load image from file path
-    
-    Args:
-        path: Path to image or PDF file
-        
-    Returns:
-        Image as numpy array (first page if PDF)
-        
-    Note: For PDFs with multiple pages, use load_all_pages() instead
-    """
-    path = str(path)
-    if path.lower().endswith(".pdf"):
-        pages = convert_from_path(path, dpi=300)
+    path_str = str(path)
+    if path_str.lower().endswith(".pdf"):
+        pages = convert_from_path(path_str, dpi=300)
         if not pages:
-            raise ValueError(f"PDF has no pages: {path}")
+            raise ValueError(f"PDF has no pages: {path_str}")
         img = np.array(pages[0])
     else:
-        img = cv2.imread(path)
+        img = cv2.imread(path_str)
         if img is None:
-            raise ValueError(f"Could not load image from {path}")
+            raise ValueError(f"Could not load image from {path_str}")
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     return img
 
 def load_all_pages(path: Path) -> List[np.ndarray]:
-    """
-    Load all pages from PDF or single image
-    
-    Args:
-        path: Path to image or PDF file
-        
-    Returns:
-        List of images as numpy arrays (one per page)
-    """
     path_str = str(path)
     if path_str.lower().endswith(".pdf"):
         try:
@@ -105,35 +79,30 @@ def load_all_pages(path: Path) -> List[np.ndarray]:
                 images.append(img)
             return images
         except Exception as e:
-            # Fallback to PyMuPDF if pdf2image fails
             try:
                 import fitz
                 doc = fitz.open(path_str)
                 images = []
-                zoom = 300 / 72.0  # DPI conversion
+                zoom = 300 / 72.0
                 mat = fitz.Matrix(zoom, zoom)
                 
                 for page_num in range(len(doc)):
                     page = doc[page_num]
                     pix = page.get_pixmap(matrix=mat)
-                    # Convert pixmap to numpy array
                     img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
                         (pix.height, pix.width, pix.n)
                     )
-                    if pix.n == 4:  # RGBA
+                    if pix.n == 4:
                         img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
-                    elif pix.n == 1:  # Grayscale
+                    elif pix.n == 1:
                         img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
                     images.append(img)
                 
                 doc.close()
                 return images
-            except ImportError:
-                raise ValueError(f"PDF conversion failed: {e}. Install poppler-utils or PyMuPDF")
-            except Exception as fallback_error:
-                raise ValueError(f"PDF conversion failed: {e}. PyMuPDF fallback also failed: {fallback_error}")
+            except Exception:
+                raise ValueError(f"PDF conversion failed: {e}")
     else:
-        # Single image file
         img = cv2.imread(path_str)
         if img is None:
             raise ValueError(f"Could not load image from {path_str}")
@@ -141,29 +110,14 @@ def load_all_pages(path: Path) -> List[np.ndarray]:
         return [img]
 
 def run_ocr(image: np.ndarray):
-    """
-    Run OCR on image
-    
-    Args:
-        image: Image as numpy array
-        
-    Returns:
-        Tuple of (texts, boxes)
-    """
     import time
-    
     start_time = time.time()
-    print("      Calling OCR predict...")
-    
     try:
         ocr = get_ocr()
-        
         if ocr is None:
             raise RuntimeError("OCR instance is not initialized")
         
-        print("      OCR instance ready, running prediction...")
         results = ocr.predict(image)
-        
         elapsed = time.time() - start_time
         print(f"      ✓ OCR prediction completed in {elapsed:.1f}s")
         
@@ -182,15 +136,12 @@ def run_ocr(image: np.ndarray):
             boxes.append([int(np.min(xs)), int(np.min(ys)), int(np.max(xs)), int(np.max(ys))])
 
         return texts, boxes
-        
     except Exception as e:
-        elapsed = time.time() - start_time
-        print(f"      ❌ OCR failed after {elapsed:.1f}s: {str(e)[:150]}")
+        print(f"      ❌ OCR failed: {str(e)[:150]}")
         raise
 
 def group_lines(words, boxes, y_thresh=25, x_gap_thresh=80):
     lines = []
-
     for word, box in zip(words, boxes):
         y_center = (box[1] + box[3]) // 2
         placed = False
@@ -218,59 +169,42 @@ def group_lines(words, boxes, y_thresh=25, x_gap_thresh=80):
         ]
     return lines
 
-def extract_english_text(file_path: Path) -> str:
+def extract_english_text_with_boxes(file_path: Path):
     """
     High-level OCR extraction function.
-    Processes all pages if PDF, returns concatenated text from all pages.
-    
-    Args:
-        file_path: Path to image or PDF file
-        
-    Returns:
-        Concatenated text from all pages
+    Returns (concatenated_text, first_page_boxes).
     """
-    # Load all pages (handles both PDFs and images)
     images = load_all_pages(file_path)
-    
     if not images:
-        return ""
+        return "", []
     
     all_text_lines = []
+    first_page_boxes = []
     
     for page_num, img in enumerate(images, 1):
-        if len(images) > 1:
-            print(f"      Processing page {page_num}/{len(images)}...")
-        
         try:
             words, boxes = run_ocr(img)
-            
             if not words:
-                if len(images) > 1:
-                    print(f"      ⚠️ Page {page_num}: No text found")
                 continue
             
             lines = group_lines(words, boxes)
             page_text = "\n".join([l["text"] for l in lines])
             
+            if page_num == 1:
+                first_page_boxes = boxes
+                
             if len(images) > 1:
-                # Add page separator for multi-page documents
                 all_text_lines.append(f"[Page {page_num}]\n{page_text}")
-                print(f"      ✓ Page {page_num}: {len(page_text)} characters")
             else:
                 all_text_lines.append(page_text)
-                
-        except Exception as e:
-            error_msg = str(e)[:100]
-            if len(images) > 1:
-                print(f"      ❌ Page {page_num} OCR failed: {error_msg}")
-                # Continue with other pages
-            else:
+        except Exception:
+            if len(images) == 1:
                 raise
-    
-    # Combine all pages
-    result = "\n\n".join(all_text_lines)
-    
-    if len(images) > 1:
-        print(f"      ✓ Total: {len(result)} characters from {len(images)} pages")
-    
-    return result
+            continue
+            
+    return "\n\n".join(all_text_lines), first_page_boxes
+
+def extract_english_text(file_path: Path) -> str:
+    """Legacy alias that returns only the text."""
+    text, _ = extract_english_text_with_boxes(file_path)
+    return text

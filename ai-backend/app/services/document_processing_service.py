@@ -36,8 +36,7 @@ try:
 except ImportError:
     PYMUPDF_AVAILABLE = False
     fitz = None
-from app.services.ocr_service import extract_english_text
-from app.services.urdu_ocr_service import extract_urdu_text
+import httpx
 from app.utils.llm import get_llm
 from app.services.form_filling_service import form_filling_service
 
@@ -224,45 +223,59 @@ class DocumentProcessingService:
                                 import time
                                 start = time.time()
                                 
-                                from app.services.ocr_service import run_ocr
-                                images_np = self.docling_service._convert_pdf_to_images(file_path) # Need images as numpy
-                                # For simplicity, let's use the first page's boxes
-                                words, boxes = run_ocr(images_np[0])
-                                page_english = "\n".join([w for w in words])
-                                
-                                if page_english:
-                                    elapsed = time.time() - start
-                                    all_english_text.append(f"[Page {i}]\n{page_english}")
-                                    # Store boxes with their associated text
-                                    for w, b in zip(words, boxes):
-                                        result["boxes"].append({
-                                            "text": w,
-                                            "box": b,
-                                            "page": i
-                                        })
-                                    print(f"    ✓ Page {i} English OCR: {len(page_english)} chars in {elapsed:.1f}s")
-                                else:
-                                    print(f"    ⚠️ Page {i} English OCR: No text found")
+                                async with httpx.AsyncClient() as client:
+                                    resp = await client.post(
+                                        "http://localhost:8001/ocr/english",
+                                        json={"file_path": str(temp_image_path)},
+                                        timeout=120.0
+                                    )
+                                    if resp.status_code == 200:
+                                        data = resp.json()
+                                        page_english = data.get("text", "")
+                                        flat_boxes = data.get("result", [])
+                                        
+                                        if page_english:
+                                            elapsed = time.time() - start
+                                            all_english_text.append(f"[Page {i}]\n{page_english}")
+                                            
+                                            words = page_english.split("\n")
+                                            for w, b in zip(words, flat_boxes):
+                                                result["boxes"].append({
+                                                    "text": w,
+                                                    "box": b,
+                                                    "page": i
+                                                })
+                                            print(f"    ✓ Page {i} English OCR: {len(page_english)} chars in {elapsed:.1f}s")
+                                        else:
+                                            print(f"    ⚠️ Page {i} English OCR: No text found")
+                                    else:
+                                        print(f"    ❌ Page {i} English OCR failed: HTTP {resp.status_code}")
                             except KeyboardInterrupt:
                                 raise
                             except Exception as ocr_error:
                                 error_msg = str(ocr_error)[:100]
                                 print(f"    ❌ Page {i} English OCR failed: {error_msg}")
-                                # Continue with other pages - don't fail entire document
-                                if "timeout" in error_msg.lower() or "hang" in error_msg.lower():
-                                    print("    ⚠️ OCR appears to be hanging, skipping remaining pages...")
-                                    break
                         
                         # Extract Urdu text with timeout protection
                         if "urdu" in languages:
                             try:
                                 print(f"    Running Urdu OCR on page {i}...")
-                                page_urdu = extract_urdu_text(str(temp_image_path))
-                                if page_urdu:
-                                    all_urdu_text.append(f"[Page {i}]\n{page_urdu}")
-                                    print(f"    ✓ Page {i} Urdu OCR: {len(page_urdu)} chars")
-                                else:
-                                    print(f"    ⚠️ Page {i} Urdu OCR: No text found")
+                                async with httpx.AsyncClient() as client:
+                                    resp = await client.post(
+                                        "http://localhost:8001/ocr/urdu",
+                                        json={"file_path": str(temp_image_path)},
+                                        timeout=120.0
+                                    )
+                                    if resp.status_code == 200:
+                                        data = resp.json()
+                                        page_urdu = data.get("text", "")
+                                        if page_urdu:
+                                            all_urdu_text.append(f"[Page {i}]\n{page_urdu}")
+                                            print(f"    ✓ Page {i} Urdu OCR: {len(page_urdu)} chars")
+                                        else:
+                                            print(f"    ⚠️ Page {i} Urdu OCR: No text found")
+                                    else:
+                                        print(f"    ❌ Page {i} Urdu OCR failed: HTTP {resp.status_code}")
                             except Exception as ocr_error:
                                 print(f"    ❌ Page {i} Urdu OCR failed: {str(ocr_error)[:100]}")
                                 # Continue with other pages
@@ -291,14 +304,24 @@ class DocumentProcessingService:
             # Extract English text
             if "english" in languages:
                 try:
-                    from app.services.ocr_service import run_ocr, load_input
-                    img = load_input(file_path)
-                    words, boxes = run_ocr(img)
-                    english_text = "\n".join(words)
-                    result["english_text"] = english_text
-                    # Store as structured snippets
-                    result["boxes"] = [{"text": w, "box": b, "page": 1} for w, b in zip(words, boxes)]
-                    print(f"  ✓ English OCR: {len(english_text)} characters")
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.post(
+                            "http://localhost:8001/ocr/english",
+                            json={"file_path": file_path_str},
+                            timeout=120.0
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            english_text = data.get("text", "")
+                            flat_boxes = data.get("result", [])
+                            result["english_text"] = english_text
+                            
+                            words = english_text.split("\n")
+                            result["boxes"] = [{"text": w, "box": b, "page": 1} for w, b in zip(words, flat_boxes)]
+                            print(f"  ✓ English OCR: {len(english_text)} characters")
+                        else:
+                            print(f"  ❌ English OCR failed: HTTP {resp.status_code}")
+                            result["english_text"] = ""
                 except Exception as e:
                     print(f"  ⚠️ English OCR failed: {e}")
                     result["english_text"] = ""
@@ -306,9 +329,20 @@ class DocumentProcessingService:
             # Extract Urdu text
             if "urdu" in languages:
                 try:
-                    urdu_text = extract_urdu_text(file_path_str)
-                    result["urdu_text"] = urdu_text
-                    print(f"  ✓ Urdu OCR: {len(urdu_text)} characters")
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.post(
+                            "http://localhost:8001/ocr/urdu",
+                            json={"file_path": file_path_str},
+                            timeout=120.0
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            urdu_text = data.get("text", "")
+                            result["urdu_text"] = urdu_text
+                            print(f"  ✓ Urdu OCR: {len(urdu_text)} characters")
+                        else:
+                            print(f"  ❌ Urdu OCR failed: HTTP {resp.status_code}")
+                            result["urdu_text"] = ""
                 except Exception as e:
                     print(f"  ⚠️ Urdu OCR failed: {e}")
                     result["urdu_text"] = ""

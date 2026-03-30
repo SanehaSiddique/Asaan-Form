@@ -4,510 +4,425 @@ from typing import Dict, List, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
 from app.utils.llm import get_llm
 
+# Default options for known checkbox field keys when LLM cannot infer from context
+KNOWN_CHECKBOX_OPTIONS = {
+    "gender": ["Male", "Female"],
+    "sex": ["Male", "Female"],
+    "marital_status": ["Single", "Married", "Divorced"],
+    "status": ["Single", "Married"],
+    "residence_status": ["Resident", "Non-Resident"],
+    "residential_status": ["Resident", "Non-Resident"],
+    "payment_method": ["Cash", "Cheque", "Online"],
+    "employment_status": ["Employed", "Unemployed", "Self-Employed"],
+    "blood_group": ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"],
+}
+
 
 class FormExtractionService:
     """
-    Service to extract form fields using LLM
-    Takes JSON only (no markdown) and identifies form fields with coordinates
-    Uses larger chunk sizes since markdown is no longer included
+    Service to extract form fields using LLM.
+    Handles:
+      - text/date/textarea fields: flat [l,t,r,b] coordinates
+      - checkbox/radio fields: array-of-arrays coordinates, one bbox per option
     """
-    
+
     def __init__(self):
-        """Initialize the LLM service with your existing LangChain setup"""
         self.llm = get_llm()
         print(f"✓ LLM initialized: {self.llm.model_name}")
-    
-    async def extract_fields(
-        self, 
-        docling_json: Dict
-    ) -> Dict:
-        """
-        Main method: Extract form fields from JSON only (no markdown)
-        Filters JSON to only include useful parts (texts and tables with coordinates)
-        
-        Args:
-            docling_json: JSON with bounding boxes from Docling
-            
-        Returns:
-            Dict with:
-                - form_fields: List of extracted fields
-                - instructions: List of form instructions
-                - special_areas: List of special areas (signature, photo, etc.)
-        """
+
+    async def extract_fields(self, docling_json: Dict) -> Dict:
         print("🤖 Starting field extraction (JSON only)")
-        
-        # Filter JSON to only include useful parts (texts and tables)
         filtered_json = self._filter_useful_json(docling_json)
         print("✓ Filtered JSON: extracted only texts and tables with coordinates")
-        
-        # Split filtered JSON into chunks (LLM has token limits)
-        # Increased chunk size since we're not sending markdown anymore
         chunks = self._chunk_json(filtered_json)
         print(f"✓ Split into {len(chunks)} chunks")
-        
-        # Process each chunk
+
         all_extractions = []
         for i, chunk in enumerate(chunks, 1):
             print(f"  Processing chunk {i}/{len(chunks)}...")
-            
-            extraction = await self._extract_from_chunk(
-                chunk, 
-                i, 
-                len(chunks)
-            )
-            
+            extraction = await self._extract_from_chunk(chunk, i, len(chunks))
             if extraction:
                 field_count = len(extraction.get('form_fields', []))
                 print(f"    ✓ Found {field_count} fields")
                 all_extractions.append(extraction)
             else:
                 print(f"    ⚠️  Chunk {i} failed")
-            
-            # Artificial delay to avoid rate limiting
             if i < len(chunks):
                 await asyncio.sleep(2)
-        
-        # Merge all extractions
+
         merged = self._merge_extractions(all_extractions)
-        
+        # Inject default options for any checkbox fields still missing them
+        merged = self._inject_known_options(merged)
+
         total_fields = len(merged.get('form_fields', []))
         total_instructions = len(merged.get('instructions', []))
         print(f"✓ Total extracted: {total_fields} fields, {total_instructions} instructions")
-        
         return merged
-    
+
+    # ------------------------------------------------------------------ #
+    # POST-PROCESS: inject known options for checkbox fields without them #
+    # ------------------------------------------------------------------ #
+    def _inject_known_options(self, merged: Dict) -> Dict:
+        for field in merged.get("form_fields", []):
+            if field.get("field_type") != "checkbox":
+                continue
+            key = (field.get("field_key") or "").lower()
+            if field.get("options"):
+                continue  # already has options, skip
+            if key in KNOWN_CHECKBOX_OPTIONS:
+                field["options"] = KNOWN_CHECKBOX_OPTIONS[key]
+                print(f"  ✓ Injected options for '{key}': {field['options']}")
+            else:
+                # Infer from bbox count
+                coords = field.get("coordinates", [])
+                if isinstance(coords, list) and coords and isinstance(coords[0], list):
+                    count = len(coords)
+                    if count == 2:
+                        field["options"] = ["Yes", "No"]
+                    else:
+                        field["options"] = [f"Option{i+1}" for i in range(count)]
+        return merged
+
+    # ------------------------------------------------------------------ #
+    # FILTER (unchanged from original)                                    #
+    # ------------------------------------------------------------------ #
     def _filter_useful_json(self, json_data: Dict) -> Dict:
-        """
-        Filter Docling JSON to only include useful parts for form extraction.
-        Extracts only texts and tables with their essential data (content, bbox, page_no).
-        Removes metadata, references, and structural information that's not needed.
-        
-        Args:
-            json_data: Full Docling JSON output
-            
-        Returns:
-            Filtered JSON with only texts and tables containing:
-            - text content
-            - bbox (bounding box coordinates)
-            - page_number
-            - label (if available)
-            - charspan (if available)
-        """
         filtered = {
             "texts": [],
             "tables": [],
             "metadata": {
-                "total_pages": json_data.get("metadata", {}).get("total_pages", 0) if isinstance(json_data.get("metadata"), dict) else 0
+                "total_pages": (
+                    json_data.get("metadata", {}).get("total_pages", 0)
+                    if isinstance(json_data.get("metadata"), dict) else 0
+                )
             }
         }
-        
-        # Handle different JSON structures from Docling
-        # Combined format (from _combine_jsons)
+
         if "all_texts" in json_data:
             texts = json_data["all_texts"]
-        # Standard Docling format
         elif "texts" in json_data:
             texts = json_data["texts"]
-        # Docling main-text format
         elif "main-text" in json_data:
             texts = json_data["main-text"]
-        # Handle pages structure (extract texts from all pages)
         elif "pages" in json_data:
             texts = []
             for page in json_data["pages"]:
                 if isinstance(page, dict):
-                    if "texts" in page:
-                        texts.extend(page["texts"])
-                    elif "main-text" in page:
-                        texts.extend(page["main-text"])
+                    texts.extend(page.get("texts", page.get("main-text", [])))
         else:
             texts = []
-        
-        # Filter texts - only keep essential fields
+
         for text_item in texts:
             if not isinstance(text_item, dict):
                 continue
-            
-            # Extract useful fields
             filtered_text = {}
-            
-            # Get text content (could be in different fields based on Docling structure)
-            text_content = None
-            if "text" in text_item:
-                text_content = text_item["text"]
-            elif "content" in text_item:
-                text_content = text_item["content"]
-            elif "value" in text_item:
-                text_content = text_item["value"]
-            elif "text_content" in text_item:
-                text_content = text_item["text_content"]
-            
-            # Skip if no text content found
+            text_content = (
+                text_item.get("text") or text_item.get("content")
+                or text_item.get("value") or text_item.get("text_content")
+            )
             if not text_content or not str(text_content).strip():
                 continue
-            
             filtered_text["text"] = str(text_content).strip()
-            
-            # Get bounding box from prov array
+
             prov = text_item.get("prov", [])
-            if prov and isinstance(prov, list) and len(prov) > 0:
+            if prov and isinstance(prov, list):
                 prov_item = prov[0] if isinstance(prov[0], dict) else {}
                 bbox = prov_item.get("bbox", {})
-                
-                # Handle bbox as dict (l, t, r, b format)
                 if bbox and isinstance(bbox, dict):
-                    filtered_text["bbox"] = {
-                        "l": bbox.get("l"),
-                        "t": bbox.get("t"),
-                        "r": bbox.get("r"),
-                        "b": bbox.get("b")
-                    }
-                # Handle bbox as array [l, t, r, b]
+                    filtered_text["bbox"] = {k: bbox.get(k) for k in ("l", "t", "r", "b")}
                 elif bbox and isinstance(bbox, list) and len(bbox) >= 4:
-                    filtered_text["bbox"] = {
-                        "l": bbox[0],
-                        "t": bbox[1],
-                        "r": bbox[2],
-                        "b": bbox[3]
-                    }
-                
-                # Get page number
+                    filtered_text["bbox"] = {"l": bbox[0], "t": bbox[1], "r": bbox[2], "b": bbox[3]}
                 page_no = prov_item.get("page_no") or prov_item.get("page")
                 if page_no is not None:
                     filtered_text["page_number"] = int(page_no)
-            
-            # Get page number from _page if available (from combined format)
+
             if "_page" in text_item:
                 filtered_text["page_number"] = int(text_item["_page"])
-            
-            # Get label if available (useful for understanding element type)
-            if "label" in text_item:
-                filtered_text["label"] = text_item["label"]
-            elif "name" in text_item:
-                filtered_text["label"] = text_item["name"]
-            
-            # Get charspan if available (for text spans)
-            if "charspan" in text_item:
-                filtered_text["charspan"] = text_item["charspan"]
-            elif "span" in text_item:
-                filtered_text["charspan"] = text_item["span"]
-            
-            # Only add if we have text content and bbox
+            for label_key in ("label", "name"):
+                if label_key in text_item:
+                    filtered_text["label"] = text_item[label_key]
+                    break
+            for span_key in ("charspan", "span"):
+                if span_key in text_item:
+                    filtered_text["charspan"] = text_item[span_key]
+                    break
+
             if filtered_text.get("text") and filtered_text.get("bbox"):
                 filtered["texts"].append(filtered_text)
-        
-        # Handle tables if present
-        if "tables" in json_data:
-            tables = json_data["tables"]
-            for table_item in tables:
-                if not isinstance(table_item, dict):
-                    continue
-                
-                filtered_table = {}
-                
-                # Get table content/structure (could be nested)
-                table_content = None
-                if "table" in table_item:
-                    table_content = table_item["table"]
-                elif "content" in table_item:
-                    table_content = table_item["content"]
-                elif "data" in table_item:
-                    table_content = table_item["data"]
-                elif "cells" in table_item:
-                    # Extract table structure from cells
-                    cells = table_item.get("cells", [])
-                    if cells:
-                        table_content = {"cells": cells}
-                
-                if table_content:
-                    filtered_table["table"] = table_content
-                
-                # Get bounding box
-                prov = table_item.get("prov", [])
-                if prov and isinstance(prov, list) and len(prov) > 0:
-                    prov_item = prov[0] if isinstance(prov[0], dict) else {}
-                    bbox = prov_item.get("bbox", {})
-                    
-                    # Handle bbox as dict
-                    if bbox and isinstance(bbox, dict):
-                        filtered_table["bbox"] = {
-                            "l": bbox.get("l"),
-                            "t": bbox.get("t"),
-                            "r": bbox.get("r"),
-                            "b": bbox.get("b")
-                        }
-                    # Handle bbox as array
-                    elif bbox and isinstance(bbox, list) and len(bbox) >= 4:
-                        filtered_table["bbox"] = {
-                            "l": bbox[0],
-                            "t": bbox[1],
-                            "r": bbox[2],
-                            "b": bbox[3]
-                        }
-                    
-                    page_no = prov_item.get("page_no") or prov_item.get("page")
-                    if page_no is not None:
-                        filtered_table["page_number"] = int(page_no)
-                
-                # Get label if available
-                if "label" in table_item:
-                    filtered_table["label"] = table_item["label"]
-                elif "name" in table_item:
-                    filtered_table["label"] = table_item["name"]
-                
-                # Only add if we have table content and bbox
-                if filtered_table.get("table") and filtered_table.get("bbox"):
-                    filtered["tables"].append(filtered_table)
-        
+
+        for table_item in json_data.get("tables", []):
+            if not isinstance(table_item, dict):
+                continue
+            filtered_table = {}
+            table_content = (
+                table_item.get("table") or table_item.get("content") or table_item.get("data")
+            )
+            if not table_content and "cells" in table_item:
+                table_content = {"cells": table_item["cells"]}
+            if table_content:
+                filtered_table["table"] = table_content
+            prov = table_item.get("prov", [])
+            if prov and isinstance(prov, list):
+                prov_item = prov[0] if isinstance(prov[0], dict) else {}
+                bbox = prov_item.get("bbox", {})
+                if bbox and isinstance(bbox, dict):
+                    filtered_table["bbox"] = {k: bbox.get(k) for k in ("l", "t", "r", "b")}
+                elif bbox and isinstance(bbox, list) and len(bbox) >= 4:
+                    filtered_table["bbox"] = {"l": bbox[0], "t": bbox[1], "r": bbox[2], "b": bbox[3]}
+                page_no = prov_item.get("page_no") or prov_item.get("page")
+                if page_no is not None:
+                    filtered_table["page_number"] = int(page_no)
+            if "label" in table_item:
+                filtered_table["label"] = table_item["label"]
+            if filtered_table.get("table") and filtered_table.get("bbox"):
+                filtered["tables"].append(filtered_table)
+
         return filtered
-    
+
+    # ------------------------------------------------------------------ #
+    # CHUNK (unchanged from original)                                     #
+    # ------------------------------------------------------------------ #
     def _chunk_json(self, json_data: Dict, max_size: int = 20000) -> List[str]:
-        """
-        Split large JSON into smaller chunks
-        
-        Args:
-            json_data: The docling JSON (can be combined from multiple pages)
-            max_size: Maximum characters per chunk
-            
-        Returns:
-            List of JSON string chunks
-        """
         json_str = json.dumps(json_data, indent=2, ensure_ascii=False)
-        
-        # If small enough, return as single chunk
         if len(json_str) <= max_size:
             return [json_str]
-        
         chunks = []
-        
-        # Handle combined multi-page JSON structure
-        if isinstance(json_data, dict) and 'all_texts' in json_data:
-            # This is our combined format from multiple pages
-            texts = json_data['all_texts']
-            metadata = json_data.get('metadata', {})
-            
-            # Calculate how many items per chunk
+        if "all_texts" in json_data:
+            texts = json_data["all_texts"]
+            metadata = json_data.get("metadata", {})
             num_chunks = max(1, (len(json_str) // max_size) + 1)
             items_per_chunk = max(5, len(texts) // num_chunks)
-            
-            # Create chunks
             for i in range(0, len(texts), items_per_chunk):
-                chunk_texts = texts[i:i + items_per_chunk]
-                chunk_data = {
-                    'texts': chunk_texts,
-                    'metadata': metadata,
-                    'chunk_info': f'items {i} to {min(i + items_per_chunk, len(texts))} of {len(texts)}'
-                }
-                chunks.append(json.dumps(chunk_data, indent=2, ensure_ascii=False))
-        
-        # Handle single page format with 'texts' array
-        elif isinstance(json_data, dict) and 'texts' in json_data:
-            texts = json_data['texts']
-            metadata = {k: v for k, v in json_data.items() if k != 'texts'}
-            
-            # Calculate how many items per chunk
+                chunks.append(json.dumps({
+                    "texts": texts[i:i + items_per_chunk],
+                    "metadata": metadata,
+                    "chunk_info": f"items {i} to {min(i+items_per_chunk, len(texts))} of {len(texts)}"
+                }, indent=2, ensure_ascii=False))
+        elif "texts" in json_data:
+            texts = json_data["texts"]
+            metadata = {k: v for k, v in json_data.items() if k != "texts"}
             num_chunks = max(1, (len(json_str) // max_size) + 1)
             items_per_chunk = max(5, len(texts) // num_chunks)
-            
-            # Create chunks
             for i in range(0, len(texts), items_per_chunk):
-                chunk_data = {
-                    'texts': texts[i:i + items_per_chunk],
-                    'metadata': metadata.get('origin', {}),
-                    'chunk_info': f'items {i} to {min(i + items_per_chunk, len(texts))}'
-                }
-                chunks.append(json.dumps(chunk_data, indent=2, ensure_ascii=False))
-        
-        # Handle page-based structure
-        elif isinstance(json_data, dict) and 'pages' in json_data:
-            pages = json_data['pages']
-            
-            for page in pages:
+                chunks.append(json.dumps({
+                    "texts": texts[i:i + items_per_chunk],
+                    "metadata": metadata.get("origin", {}),
+                    "chunk_info": f"items {i} to {min(i+items_per_chunk, len(texts))}"
+                }, indent=2, ensure_ascii=False))
+        elif "pages" in json_data:
+            for page in json_data["pages"]:
                 page_str = json.dumps(page, indent=2, ensure_ascii=False)
                 if len(page_str) <= max_size:
                     chunks.append(page_str)
                 else:
-                    # Split large pages further
                     for i in range(0, len(page_str), max_size):
                         chunks.append(page_str[i:i + max_size])
-        
         else:
-            # Fallback: simple character split
             for i in range(0, len(json_str), max_size):
                 chunks.append(json_str[i:i + max_size])
-        
         return chunks if chunks else [json_str]
-    
+
+    # ------------------------------------------------------------------ #
+    # EXTRACT FROM CHUNK                                                  #
+    # ------------------------------------------------------------------ #
     async def _extract_from_chunk(
-        self,
-        json_chunk: str,
-        chunk_num: int,
-        total_chunks: int
+        self, json_chunk: str, chunk_num: int, total_chunks: int
     ) -> Optional[Dict]:
-        """
-        Extract fields from a single chunk using LLM (JSON only, no markdown)
-        
-        Args:
-            json_chunk: This specific JSON chunk
-            chunk_num: Current chunk number
-            total_chunks: Total number of chunks
-            
-        Returns:
-            Extracted data or None if failed
-        """
         prompt = self._build_prompt(json_chunk, chunk_num, total_chunks)
-        
         try:
-            # Use LangChain's ChatOpenAI
             messages = [
-                SystemMessage(
-                    content="You are a form extraction expert. Extract form fields with precise coordinates and metadata. Always respond with valid JSON."
-                ),
+                SystemMessage(content=(
+                    "You are a form extraction expert. Extract form fields with precise "
+                    "coordinates and metadata. Always respond with valid JSON."
+                )),
                 HumanMessage(content=prompt)
             ]
-            
-            # Invoke LLM
             response = await self.llm.ainvoke(messages)
-            
-            # Parse response
             content = response.content
-            
-            # Clean markdown code blocks if present
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
                 parts = content.split("```")
                 if len(parts) >= 2:
                     content = parts[1].strip()
-                    # Remove language identifier if present (e.g., "json\n{...")
                     if content.startswith(("json", "JSON")):
                         content = content[4:].strip()
-            
-            # Parse JSON
             result = json.loads(content)
-            
-            # Validate structure
             if not all(k in result for k in ["form_fields", "instructions", "special_areas"]):
                 print(f"      ⚠️  Invalid structure in chunk {chunk_num}")
                 return None
-            
             return result
-        
         except json.JSONDecodeError as e:
             print(f"      ❌ JSON parse error: {str(e)[:50]}")
             return None
         except Exception as e:
             print(f"      ❌ Error: {str(e)[:80]}")
             return None
-    
-    def _build_prompt(
-        self,
-        json_chunk: str,
-        chunk_num: int,
-        total_chunks: int
-    ) -> str:
-        """Build the extraction prompt (JSON only, no markdown)"""
-        
-        return f"""
-You are analyzing a form to extract fillable fields.
 
-**CHUNK {chunk_num} OF {total_chunks}**
+    # ------------------------------------------------------------------ #
+    # BUILD PROMPT — multi-bbox coords + options for checkboxes           #
+    # ------------------------------------------------------------------ #
+    def _build_prompt(self, json_chunk: str, chunk_num: int, total_chunks: int) -> str:
+        return f"""You are analyzing a form document to extract all fillable fields.
 
-**JSON METADATA CHUNK:**
+CHUNK {chunk_num} OF {total_chunks}
+
+JSON DATA:
 {json_chunk}
 
-**YOUR TASK:**
-Extract all form fields from this chunk. For each field:
+YOUR TASK: Extract every fillable field. For each field follow these rules exactly.
 
-1. **Identify the field label** (e.g., "Name", "Date of Birth", "Address")
-2. **Determine field type**: 
-   - text_input (single line text)
-   - textarea (multi-line text)
-   - date (date fields)
-   - checkbox (checkboxes)
-   - signature (signature areas)
-   - dropdown (select/dropdown)
-   - image_upload (photo/image upload areas)
+━━━ FIELD TYPES ━━━
+• text_input   — single-line text box
+• textarea     — multi-line text box
+• date         — date field (DD/MM/YYYY etc.)
+• checkbox     — ANY field where user picks from options: Gender (Male/Female),
+                 Marital Status, Residence Status, Payment Method, Yes/No,
+                 Blood Group, Employment Status, etc.
+                 When you see multiple boxes/circles in a row = always checkbox.
+• signature    — signature area
+• dropdown     — select/combo box
+• image_upload — photo/passport image area
 
-3. **Extract coordinates from bbox**: [left, top, right, bottom]
-   Example: {{"l": 59.74, "t": 952.25, "r": 124.59, "b": 938.32}} → [59.74, 952.25, 124.59, 938.32]
+━━━ COORDINATES — THIS IS THE MOST IMPORTANT RULE ━━━
 
-4. **Extract span from charspan**: {{"offset": start, "length": end - start}}
-   Example: "charspan": [0, 11] → {{"offset": 0, "length": 11}}
+TEXT fields (text_input, textarea, date, signature, dropdown, image_upload):
+  coordinates = flat array of 4 numbers [left, top, right, bottom]
+  ✓ CORRECT: [59.74, 952.25, 124.59, 938.32]
+  ✗ WRONG:   [[59.74, 952.25, 124.59, 938.32]]
 
-5. **Get page_number from prov array**
+CHECKBOX fields:
+  coordinates = array of arrays — one [l, t, r, b] per option, left-to-right
+  ✓ CORRECT 2 options: [[127.11, 481.67, 162.88, 472.94], [246.58, 481.67, 292.42, 472.24]]
+  ✓ CORRECT 3 options: [[142.39, 404.83, 166.70, 395.05], [265.68, 404.48, 295.20, 396.09], [383.76, 404.48, 435.86, 396.09]]
+  ✗ WRONG: [127.11, 481.67, 162.88, 472.94]  (flat = only first option)
 
-6. **Determine if required** (usually true for form fields)
+━━━ OPTIONS ARRAY FOR CHECKBOXES ━━━
+Read the text labels next to each box/circle on the form.
+"options" must be in the SAME ORDER as the coordinate arrays (left to right).
+Defaults if you cannot read labels:
+  gender / sex            → ["Male", "Female"]
+  marital_status          → ["Single", "Married", "Divorced"]
+  residence_status        → ["Resident", "Non-Resident"]
+  payment_method          → ["Cash", "Cheque", "Online"]
+  2-option unknown        → ["Yes", "No"]
+  3-option unknown        → ["Option1", "Option2", "Option3"]
 
-7. **Add validation rules** if obvious (e.g., "numeric" for ID numbers)
+Non-checkbox fields must have "options": []
 
-**ALSO EXTRACT:**
-- Form instructions (text that tells user how to fill the form)
-- Special areas (signature boxes, photo areas, etc.)
+━━━ OTHER RULES ━━━
+• field_key: snake_case version of field_name, unique across all fields
+• span: extract from charspan if present, else {{"offset": 0, "length": 0}}
+• page_number: from prov[0].page_no
+• required: true for most form fields
+• validation: "numeric" for IDs/amounts, "email" for email, "date" for dates, else null
 
-**RESPOND ONLY WITH VALID JSON** in this exact format:
+━━━ OUTPUT FORMAT (respond ONLY with this JSON, no explanation) ━━━
 {{
   "form_fields": [
     {{
-      "field_name": "Name of Candidate",
-      "field_key": "candidate_name",
+      "field_name": "Student's Name",
+      "field_key": "student_name",
       "field_type": "text_input",
       "required": true,
       "validation": null,
       "coordinates": [59.74, 952.25, 124.59, 938.32],
+      "options": [],
       "span": {{"offset": 0, "length": 11}},
+      "page_number": 1
+    }},
+    {{
+      "field_name": "Gender",
+      "field_key": "gender",
+      "field_type": "checkbox",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        [127.11, 481.67, 162.88, 472.94],
+        [246.58, 481.67, 292.42, 472.24]
+      ],
+      "options": ["Male", "Female"],
+      "span": {{"offset": 0, "length": 0}},
+      "page_number": 1
+    }},
+    {{
+      "field_name": "Marital Status",
+      "field_key": "marital_status",
+      "field_type": "checkbox",
+      "required": true,
+      "validation": null,
+      "coordinates": [
+        [142.39, 404.83, 166.70, 395.05],
+        [265.68, 404.48, 295.20, 396.09],
+        [383.76, 404.48, 435.86, 396.09]
+      ],
+      "options": ["Single", "Married", "Divorced"],
+      "span": {{"offset": 0, "length": 0}},
       "page_number": 1
     }}
   ],
-  "instructions": ["Fill all required fields", "Attach documents"],
+  "instructions": ["Fill all required fields"],
   "special_areas": [
     {{
-      "type": "image_upload",
-      "label": "Paste Photograph",
-      "requirements": "passport size",
+      "type": "signature",
+      "label": "Signature of Applicant",
+      "requirements": null,
       "coordinates": [100, 200, 150, 250]
     }}
   ]
 }}
 
-Extract ALL fields found in this chunk with complete information.
+Extract ALL fields found in this chunk.
 """
-    
+
+    # ------------------------------------------------------------------ #
+    # MERGE — checkbox deduplication prefers more option bboxes           #
+    # ------------------------------------------------------------------ #
     def _merge_extractions(self, extractions: List[Dict]) -> Dict:
-        """
-        Merge multiple chunk extractions into one result
-        Removes duplicates based on field_key
-        """
-        merged = {
-            "form_fields": [],
-            "instructions": [],
-            "special_areas": []
-        }
-        
-        # Track what we've seen to avoid duplicates
-        seen_fields = set()
-        seen_instructions = set()
-        seen_areas = set()
-        
+        merged = {"form_fields": [], "instructions": [], "special_areas": []}
+        seen_fields: Dict[str, int] = {}  # field_key -> index in merged list
+        seen_instructions: set = set()
+        seen_areas: set = set()
+
         for extraction in extractions:
-            # Merge fields
-            for field in extraction.get('form_fields', []):
-                field_key = field.get('field_key', '')
-                if field_key and field_key not in seen_fields:
-                    seen_fields.add(field_key)
-                    merged['form_fields'].append(field)
-            
-            # Merge instructions
-            for instruction in extraction.get('instructions', []):
+            for field in extraction.get("form_fields", []):
+                field_key = field.get("field_key", "")
+                if not field_key:
+                    continue
+
+                if field_key not in seen_fields:
+                    seen_fields[field_key] = len(merged["form_fields"])
+                    merged["form_fields"].append(field)
+                else:
+                    # For checkbox fields, keep the one with more option bboxes
+                    existing_idx = seen_fields[field_key]
+                    existing = merged["form_fields"][existing_idx]
+                    new_coords = field.get("coordinates", [])
+                    existing_coords = existing.get("coordinates", [])
+                    is_new_multi = (
+                        isinstance(new_coords, list) and new_coords
+                        and isinstance(new_coords[0], list)
+                    )
+                    is_existing_multi = (
+                        isinstance(existing_coords, list) and existing_coords
+                        and isinstance(existing_coords[0], list)
+                    )
+                    # Replace if new has multi-bbox and existing doesn't, or new has more options
+                    if is_new_multi and (
+                        not is_existing_multi
+                        or len(new_coords) > len(existing_coords)
+                    ):
+                        merged["form_fields"][existing_idx] = field
+
+            for instruction in extraction.get("instructions", []):
                 if instruction and instruction not in seen_instructions:
                     seen_instructions.add(instruction)
-                    merged['instructions'].append(instruction)
-            
-            # Merge special areas
-            for area in extraction.get('special_areas', []):
-                area_label = area.get('label', '')
+                    merged["instructions"].append(instruction)
+
+            for area in extraction.get("special_areas", []):
+                area_label = area.get("label", "")
                 if area_label and area_label not in seen_areas:
                     seen_areas.add(area_label)
-                    merged['special_areas'].append(area)
-        
+                    merged["special_areas"].append(area)
+
         return merged

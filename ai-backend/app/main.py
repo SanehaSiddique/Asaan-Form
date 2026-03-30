@@ -13,7 +13,6 @@ import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.apis.routes import router as document_intake_router
 from app.apis.form_upload import router as form_router
 from app.apis.document_upload import router as document_router
 from app.apis.chatbot import router as chatbot_router
@@ -61,16 +60,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.on_event("startup")
 async def startup_event():
     """
-    Preload OCR models in background to avoid blocking first request
+    Main app startup logic. OCR is now handled by the microservice on port 8001.
     """
-    try:
-        from app.services.ocr_service import preload_ocr
-        print("🚀 Preloading OCR models in background...")
-        preload_ocr()
-        print("  ✓ OCR preload initiated (models will be ready shortly)")
-    except Exception as e:
-        print(f"  ⚠️ OCR preload failed: {e}")
-        # Continue anyway - OCR will load on first use
+    pass
 
 
 # Add CORS middleware
@@ -92,8 +84,7 @@ app.include_router(document_router)
 # Chatbot routes - ingest KB + ask questions via RAG
 app.include_router(chatbot_router)
 
-# Legacy document intake route
-app.include_router(document_intake_router)
+# Form fill router
 app.include_router(fills)
 
 

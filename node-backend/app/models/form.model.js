@@ -23,6 +23,11 @@ const formSchema = new mongoose.Schema({
     formIdAI: {
         type: String, // ID used by AI backend for folder names
     },
+    status: {
+        type: String,
+        enum: ["draft", "processing", "ready", "rejected"],
+        default: "draft"
+    },
     createdAt: {
         type: Date,
         default: Date.now
