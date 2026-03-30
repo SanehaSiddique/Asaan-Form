@@ -417,36 +417,27 @@ class FormProcessingService:
     async def process_form(
         self, 
         user_id: str, 
-        file: UploadFile,
-        form_name: Optional[str] = None
+        file: Optional[UploadFile] = None,
+        form_name: Optional[str] = None,
+        form_folder: Optional[Path] = None
     ) -> Dict:
         """
         Complete form processing pipeline:
-        1. Save form (convert PDF to images if needed)
+        1. Save form (if not already saved)
         2. Process all pages with Docling
         3. Combine Docling outputs
         4. Extract fields with LLM
         5. Return final result with fields, coordinates, and types
-        
-        Args:
-            user_id: User identifier
-            file: Uploaded form file
-            form_name: Optional name for the form
-            
-        Returns:
-            Complete processing result
         """
         print("\n" + "="*60)
         print("📋 FORM PROCESSING PIPELINE")
         print("="*60)
-        print(f"📄 File: {file.filename}")
+        print(f"📄 File: {file.filename if file else 'Existing Folder'}")
         print(f"👤 User: {user_id}")
-        print(f"📝 Name: {form_name or 'auto'}")
-        print()
         
         result = {
             "user_id": user_id,
-            "original_filename": file.filename,
+            "original_filename": file.filename if file else "existing",
             "form_name": form_name,
             "success": False,
             "errors": [],
@@ -454,11 +445,24 @@ class FormProcessingService:
         }
         
         try:
-            # Step 1: Save form and convert PDF to images
-            print("📁 Step 1: Saving form...")
-            form_folder, image_paths = await self.save_form(
-                user_id, file, form_name
-            )
+            # Step 1: Save form or use existing folder
+            if not form_folder:
+                if not file:
+                    raise ValueError("Either 'file' or 'form_folder' must be provided")
+                print("📁 Step 1: Saving form...")
+                form_folder, image_paths = await self.save_form(
+                    user_id, file, form_name
+                )
+            else:
+                print(f"📁 Step 1: Using existing form folder: {form_folder}")
+                image_paths = sorted(form_folder.glob("page_*.png"))
+                if not image_paths:
+                    # If no images, maybe it's a PDF that needs conversion
+                    original_candidates = list(form_folder.glob("original.*"))
+                    if original_candidates:
+                        image_paths = self._pdf_to_images(original_candidates[0], form_folder)
+                    else:
+                        raise FileNotFoundError(f"No pages or original file found in {form_folder}")
             
             result["data"]["form_id"] = form_folder.name
             result["data"]["form_folder"] = str(form_folder)
@@ -482,6 +486,18 @@ class FormProcessingService:
                 "markdown_path": docling_result["paths"]["markdown"],
                 "json_path": docling_result["paths"]["json"]
             }
+            
+            # --- Readability Validation ---
+            combined_md = docling_result.get("markdown", "")
+            all_texts = docling_result.get("json", {}).get("all_texts", [])
+            
+            if not combined_md or not combined_md.strip():
+                raise HTTPException(status_code=422, detail="Form is not readable. Please upload a clearer image or PDF.")
+            if len(combined_md.strip()) < 50:
+                raise HTTPException(status_code=422, detail="Form is not readable. Please upload a clearer image or PDF.")
+            if not all_texts:
+                raise HTTPException(status_code=422, detail="Form is not readable. Please upload a clearer image or PDF.")
+            # ------------------------------
             
             # Step 4: Extract fields with LLM (JSON only, no markdown)
             print("\n🤖 Step 3: Extracting form fields...")

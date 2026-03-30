@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { useFormWebSocket } from '../hooks/useFormWebSocket';
 import {
     FileText,
     CheckCircle,
@@ -19,7 +22,6 @@ import API from '../../axiosInstance';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import PageTransition from '@/components/PageTransition';
-import { toast } from 'sonner';
 
 const fieldTypeToInputType = (fieldType) => {
     if (!fieldType) return 'text';
@@ -34,6 +36,7 @@ const fieldTypeToInputType = (fieldType) => {
 const FormWorkspace = () => {
     const { formId, documentId } = useParams();
     const navigate = useNavigate();
+    const user = useSelector((state) => state.auth.user);
 
     const [loading, setLoading] = useState(true);
     const [document, setDocument] = useState(null);
@@ -99,7 +102,7 @@ const FormWorkspace = () => {
                 fillDataFields.forEach((f) => {
                     const key = normalize(f.field_key ?? f.field_name);
                     const nameKey = normalize((f.field_name ?? f.field_key ?? '').toString().replace(/_/g, ' '));
-                    
+
                     if (key && !['__proto__', 'constructor', 'prototype'].includes(key)) {
                         valueByKey[key] = f;
                     }
@@ -168,7 +171,101 @@ const FormWorkspace = () => {
     const handleFieldChange = (index, value) => {
         if (typeof index !== 'number' && typeof index !== 'string') return;
         if (String(index).includes('__proto__') || String(index).includes('constructor')) return;
+
+        // Update individual input value state
         setFormValues(prev => ({ ...prev, [index]: value }));
+
+        // Update the master mapping too so it's ready for saving
+        setMapping(prevMapping => {
+            const newMapping = [...prevMapping];
+            if (newMapping[index]) {
+                newMapping[index] = { ...newMapping[index], value: value };
+            }
+            return newMapping;
+        });
+    };
+
+    const effectiveUserId = user?.id ?? user?._id ?? null;
+
+    // BUG 4 FIX: wrap in useCallback with empty deps array.
+    // The functional setState forms (setMapping, setFormValues) inside never need
+    // stale closure values — they always receive the latest state as their argument.
+    // Without useCallback, every render creates a new function reference, causing
+    // the useEffect and useFormWebSocket listeners to re-register on every render,
+    // and in some timing windows they fire against a stale mapping snapshot.
+    const applyFieldUpdate = useCallback((field_key, newValue) => {
+        console.log(`[FormWorkspace] 📥 applyFieldUpdate: "${field_key}" into "${newValue}"`);
+
+        setMapping(prevMapping => {
+            const newMapping = [...prevMapping];
+            // ROBUST NORMALIZATION: handles dots, slashes, underscores, and lowercase
+            const normalize = (s) => (s ?? "").toString().toLowerCase().replace(/[\s\.\/_\-]/g, "");
+            const target = normalize(field_key);
+
+            const index = newMapping.findIndex(f => {
+                const fk = normalize(f.field_key);
+                const fn = normalize(f.field_name);
+                return fk === target || fn === target;
+            });
+
+            if (index !== -1) {
+                console.log(`[FormWorkspace] ✅ MATCH FOUND at index ${index} (${newMapping[index].field_name}). Updating state...`);
+                newMapping[index] = { ...newMapping[index], value: newValue };
+                // setFormValues is stable (from useState) so safe to call inside setMapping callback
+                setFormValues(prev => ({ ...prev, [index]: newValue }));
+                toast.success(`Updated ${newMapping[index].field_name} via AI Chat 😊`);
+            } else {
+                console.warn(`[FormWorkspace] ❌ NO MATCH for key "${field_key}" (normalized: "${target}") in schema.`);
+            }
+
+            return newMapping;
+        });
+    }, []); // empty deps: only uses functional setState, never reads external state directly
+
+    // Listen for real-time field updates from the Chatbot via WebSocket
+    // BUG 4 FIX: pass applyFieldUpdate as a stable reference — useFormWebSocket
+    // should also memoize its internal listener if it uses useEffect internally
+    useFormWebSocket(effectiveUserId, (field_key, newValue) => {
+        console.log(`[FormWorkspace] 🌐 WS received field_update: ${field_key} = ${newValue}`);
+        applyFieldUpdate(field_key, newValue);
+    });
+
+    // Listen to local CustomEvent from Chatbot component as a bulletproof fallback
+    // BUG 4 FIX: add applyFieldUpdate to the dependency array so the listener is
+    // re-registered whenever the callback identity changes (it won't with useCallback + [],
+    // but this is the correct pattern regardless)
+    useEffect(() => {
+        const handleLocalUpdate = (e) => {
+            console.log(`[FormWorkspace] Received local update event:`, e.detail);
+            if (e.detail && e.detail.field_key) {
+                applyFieldUpdate(e.detail.field_key, e.detail.value);
+            }
+        };
+        window.addEventListener("fieldUpdated", handleLocalUpdate);
+        return () => window.removeEventListener("fieldUpdated", handleLocalUpdate);
+    }, [applyFieldUpdate]); // BUG 4 FIX: was [] before, applyFieldUpdate is now a dep
+
+    const [saving, setSaving] = useState(false);
+    const saveChanges = async () => {
+        try {
+            setSaving(true);
+            const response = await API.put(`upload/document/mapping/${documentId}`, {
+                mapping: mapping
+            });
+            console.log("[FormWorkspace] Map saved. Server Response:", response.data);
+
+            // Re-sync local state from server response (best practice)
+            if (response.data?.mapping) {
+                setMapping(response.data.mapping);
+            }
+
+            toast.success("All changes saved correctly! ✨");
+        } catch (error) {
+            console.error("Error saving manual edits:", error);
+            toast.error("Failed to save changes. Please try again.");
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleDownload = async () => {
@@ -259,6 +356,16 @@ const FormWorkspace = () => {
                         <div className="flex items-center gap-3">
                             <Button
                                 size="sm"
+                                variant="outline"
+                                className="border-asaan-royal/30 text-asaan-royal hover:bg-asaan-royal/5 font-bold px-6 rounded-xl"
+                                onClick={saveChanges}
+                                disabled={saving}
+                                isLoading={saving}
+                            >
+                                Save Changes
+                            </Button>
+                            <Button
+                                size="sm"
                                 className="bg-gradient-to-r from-asaan-sky to-asaan-royal hover:shadow-glow transition-all font-bold px-6 rounded-xl"
                                 onClick={handleDownload}
                                 disabled={downloading}
@@ -324,8 +431,8 @@ const FormWorkspace = () => {
                                             onClick={() => setActiveField(i)}
                                             onKeyDown={(e) => e.key === 'Enter' && setActiveField(i)}
                                             className={`absolute border-2 rounded-md transition-all cursor-pointer ${activeField === i
-                                                    ? 'border-asaan-royal bg-asaan-royal/10 ring-8 ring-asaan-royal/5 z-30 shadow-glow'
-                                                    : 'border-transparent z-20 hover:border-asaan-sky/40 hover:bg-asaan-sky/5'
+                                                ? 'border-asaan-royal bg-asaan-royal/10 ring-8 ring-asaan-royal/5 z-30 shadow-glow'
+                                                : 'border-transparent z-20 hover:border-asaan-sky/40 hover:bg-asaan-sky/5'
                                                 }`}
                                             style={{
                                                 left,
@@ -387,8 +494,8 @@ const FormWorkspace = () => {
                                             key={index}
                                             onClick={() => setActiveField(index)}
                                             className={`p-5 rounded-[2rem] border transition-all duration-300 cursor-pointer ${activeField === index
-                                                    ? 'border-asaan-royal bg-white shadow-medium ring-1 ring-asaan-royal/10 translate-x-1'
-                                                    : 'border-border bg-white/40 hover:bg-white/80'
+                                                ? 'border-asaan-royal bg-white shadow-medium ring-1 ring-asaan-royal/10 translate-x-1'
+                                                : 'border-border bg-white/40 hover:bg-white/80'
                                                 }`}
                                         >
                                             <div className="flex justify-between items-center mb-2">

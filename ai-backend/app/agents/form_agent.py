@@ -13,7 +13,7 @@ from app.services.form_processing_service import FormProcessingService
 _form_service = FormProcessingService()
 
 
-def form_agent(state: AgentState) -> AgentState:
+async def form_agent(state: AgentState) -> AgentState:
     """
     Process a form file to extract fields with coordinates and types.
     
@@ -46,37 +46,26 @@ def form_agent(state: AgentState) -> AgentState:
         }
     
     try:
-        # Create an UploadFile from the file path
-        # This allows us to use the existing form processing service
-        file_obj = open(file_path, 'rb')
-        upload_file = UploadFile(
-            filename=file_path.name,
-            file=file_obj
+        # Process the form using the service on the EXISTING folder
+        result = await _form_service.process_form(
+            user_id=user_id,
+            file=None,
+            form_name=None,
+            form_folder=file_path.parent
         )
         
-        # Process the form using the service
-        import asyncio
-        
-        # Run the async process_form method
-        result = asyncio.run(_form_service.process_form(
-            user_id=user_id,
-            file=upload_file,
-            form_name=None
-        ))
-        
-        file_obj.close()
-        
         return {
-            **state,
-            "form_result": result
+            "form_result": result,
+            "error": None if result.get("success") else result.get("errors", ["Form processing failed"])[0]
         }
         
     except Exception as e:
+        print(f"  ❌ Form processing node error: {e}")
         return {
-            **state,
             "form_result": {
                 "success": False,
                 "error": str(e),
                 "errors": [str(e)]
-            }
+            },
+            "error": f"Form error: {str(e)}"
         }

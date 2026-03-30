@@ -1,0 +1,6 @@
+@echo off
+echo Starting OCR microservice on port 8001...
+start "OCR Microservice" cmd /k "python ocr_microservice.py"
+
+echo Starting main FastAPI app on port 8000...
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

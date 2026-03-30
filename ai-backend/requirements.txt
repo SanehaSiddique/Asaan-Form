@@ -45,3 +45,4 @@ torchvision
 ultralytics
 opencv-python
 numpy
+httpx>=0.27.0

@@ -79,6 +79,7 @@ def extract_urdu_text(file_path: str) -> str:
     image = Image.open(file_path).convert("RGB")
 
     # ---- Line detection ----
+    print(f"    🔍 Detecting Urdu text lines in {file_path}...")
     results = _detection_model.predict(
         source=image,
         conf=0.2,
@@ -88,17 +89,22 @@ def extract_urdu_text(file_path: str) -> str:
         device=0 if _device.type == "cuda" else "cpu"
     )
 
-    if not results or results[0].boxes is None:
+    if not results or results[0].boxes is None or len(results[0].boxes) == 0:
+        print("    ⚠️ No Urdu text lines detected.")
         return ""
 
     boxes = results[0].boxes.xyxy.cpu().numpy().tolist()
+    print(f"    ✅ Detected {len(boxes)} Urdu text lines.")
 
     # Sort top-to-bottom (Urdu reading order)
     boxes.sort(key=lambda b: b[1])
 
     # ---- Text recognition ----
     lines = []
-    for box in boxes:
+    print(f"    ✍️ Recognizing text in {len(boxes)} lines...")
+    for i, box in enumerate(boxes, 1):
+        if i % 5 == 0:
+            print(f"      Processing line {i}/{len(boxes)}...")
         crop = image.crop(box)
         text = text_recognizer(
             crop,
@@ -109,4 +115,5 @@ def extract_urdu_text(file_path: str) -> str:
         if text.strip():
             lines.append(text)
 
+    print(f"    ✅ Urdu OCR complete. {len(lines)} lines recognized.")
     return "\n".join(lines)

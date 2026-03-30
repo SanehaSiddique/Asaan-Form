@@ -34,6 +34,9 @@ exports.uploadForm = async (req, res) => {
 
         // 2. Forward to AI Backend for extraction
         try {
+            newForm.status = "processing";
+            await newForm.save();
+            
             const formData = new FormData();
             const fileStream = fs.createReadStream(req.file.path);
 
@@ -52,6 +55,7 @@ exports.uploadForm = async (req, res) => {
             const aiData = aiResponse.data.data || aiResponse.data;
             newForm.formIdAI = aiData?.form_id || aiResponse.data?.form_id;
             newForm.formSchema = aiData?.form_fields?.form_fields || aiResponse.data?.form_fields?.form_fields || [];
+            newForm.status = "ready";
             await newForm.save();
 
             res.status(201).json({
@@ -61,6 +65,9 @@ exports.uploadForm = async (req, res) => {
             });
         } catch (aiError) {
             console.error("AI Backend Error:", aiError.message);
+            newForm.status = "rejected";
+            await newForm.save();
+            
             res.status(201).json({
                 message: "Form uploaded locally, but AI processing failed",
                 form: newForm,
@@ -265,6 +272,11 @@ exports.getFilledPdf = async (req, res) => {
         formData.append("document_filenames", docFilenames.join(","));
         formData.append("return_pdf", "true");
 
+        // Pass manual edits to the AI overlay service
+        if (document.semanticMapping && document.semanticMapping.length > 0) {
+            formData.append("saved_mapping", JSON.stringify(document.semanticMapping));
+        }
+
         const aiResponse = await axios.post(`${AI_BACKEND_URL}/fill/fill-existing`, formData, {
             headers: formData.getHeaders(),
             timeout: 300000,
@@ -317,6 +329,19 @@ exports.getFillData = async (req, res) => {
             return res.status(400).json({
                 message: "No documents processed yet. Re-upload a document to process it first."
             });
+        }
+
+        // Persistence Logic: If document already has a saved mapping, return it directly
+        // and skip the AI call entirely. This ensures manual edits are preserved.
+        if (document.semanticMapping && document.semanticMapping.length > 0) {
+            const hasValues = document.semanticMapping.some(m => m.value != null && m.value !== "");
+            if (hasValues) {
+                console.log(`[getFillData] Returning ${document.semanticMapping.length} saved fields from MongoDB`);
+                return res.status(200).json({
+                    final_json: { form_id: aiFormId, fields: document.semanticMapping },
+                    fields: document.semanticMapping
+                });
+            }
         }
 
         const formData = new FormData();
@@ -419,8 +444,15 @@ exports.uploadAndMapDocument = async (req, res) => {
 
         await newDoc.save();
 
-        // Use the AI Backend's internal form ID if available, otherwise fallback to index naming
-        const aiFormId = form.formIdAI || formID;
+        // Ensure we use the AI Backend's internal form folder ID
+        const aiFormId = form.formIdAI;
+        
+        if (!aiFormId) {
+            console.error(`[uploadAndMapDocument] Form ${formID} is missing formIdAI (AI internal folder ID)`);
+            return res.status(400).json({ 
+                message: "This form has not been fully processed by the AI system yet. Please go to the Form Review page first or wait a moment." 
+            });
+        }
 
         // Forward to AI Backend for upload-and-process, then map using the /fill API
         try {
@@ -504,6 +536,55 @@ exports.uploadAndMapDocument = async (req, res) => {
             });
         }
     } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * Update the semantic mapping of a document (manual edits from React form)
+ */
+exports.updateMapping = async (req, res) => {
+    try {
+        const { id: documentId } = req.params;
+        const { mapping, field_key, value } = req.body;
+
+        if (!documentId) {
+            return res.status(400).json({ message: "documentId is required" });
+        }
+
+        const doc = await Document.findById(documentId);
+        if (!doc) {
+            return res.status(404).json({ message: "Document not found" });
+        }
+
+        if (mapping && Array.isArray(mapping)) {
+            // Bulk update of the entire mapping array
+            // We want to preserve the coordinate metadata if the new objects don't have it,
+            // but for simplicity, the frontend usually sends back the objects it received.
+            doc.semanticMapping = mapping;
+        } else if (field_key && value !== undefined) {
+            // Single field update
+            const index = doc.semanticMapping.findIndex(m => m.field_key === field_key);
+            if (index !== -1) {
+                doc.semanticMapping[index].value = value;
+                // Mark as modified for Mongoose Mixed/Array types
+                doc.markModified('semanticMapping');
+            } else {
+                return res.status(404).json({ message: `Field ${field_key} not found in document mapping` });
+            }
+        } else {
+            return res.status(400).json({ message: "Provide either a full 'mapping' array or 'field_key' and 'value'" });
+        }
+
+        await doc.save();
+        
+        return res.json({ 
+            message: "Mapping updated successfully", 
+            documentId: doc._id,
+            mapping: doc.semanticMapping 
+        });
+    } catch (error) {
+        console.error("[uploadController] updateMapping error:", error.message);
         res.status(500).json({ message: error.message });
     }
 };

@@ -13,6 +13,8 @@ from pathlib import Path
 
 from app.config import settings
 from app.services.form_processing_service import form_processing_service
+from app.graph.master_graph import master_graph
+from app.schemas.state import AgentState
 
 router = APIRouter(prefix="/form", tags=["Forms"])
 
@@ -61,14 +63,38 @@ async def upload_form(
             status_code=400,
             detail=f"Invalid file type '{file_ext}'. Allowed: {settings.ALLOWED_EXTENSIONS}"
         )
-    
     try:
         if process:
-            # Run complete processing pipeline
-            result = await form_processing_service.process_form(
+            # 1. Save form first
+            form_folder, image_paths = await form_processing_service.save_form(
                 user_id, file, form_name
             )
-            return JSONResponse(content=result)
+            original_path = form_folder / f"original{Path(file.filename).suffix.lower()}"
+            
+            # 2. Run processing via LangGraph
+            print(f"\n🚀 Invoking MasterGraph for Form Process: {original_path}")
+            state = AgentState(
+                user_id=user_id,
+                intent="form",
+                files=[str(original_path)]
+            )
+            result = await master_graph.ainvoke(state)
+            
+            if "error" in result and result["error"]:
+                 raise HTTPException(status_code=500, detail=result["error"])
+            
+            # Align response with legacy Node.js/Frontend expectations
+            form_result = result.get("form_result", {})
+            form_data = form_result.get("data", {})
+            return JSONResponse(content={
+                "success": True,
+                "user_id": user_id,
+                "data": {
+                    "form_id": form_data.get("form_id"),
+                    "form_fields": form_data.get("form_fields")
+                },
+                "form_result": form_result
+            })
         else:
             # Just save the form without processing
             form_folder, image_paths = await form_processing_service.save_form(
@@ -222,37 +248,28 @@ async def process_existing_form(user_id: str, form_id: str):
     output_dir.mkdir(parents=True, exist_ok=True)
     
     try:
-        # Process with Docling
-        print(f"\n📄 Processing existing form: {form_id}")
-        docling_result = await form_processing_service.process_images_with_docling(
-            image_paths, 
-            output_dir
+        # Run processing via LangGraph
+        print(f"\n🚀 Invoking MasterGraph for Existing Form Process: {form_id}")
+        original_path = form_folder / "original.pdf" # assuming original.pdf or similar
+        if not original_path.exists():
+            # try to find any PDF/image that isn't page_*.png
+            original_candidates = list(form_folder.glob("original.*"))
+            if original_candidates:
+                original_path = original_candidates[0]
+            else:
+                original_path = image_paths[0] # fallback to first image
+
+        state = AgentState(
+            user_id=user_id,
+            intent="form",
+            files=[str(original_path)]
         )
+        graph_result = await master_graph.ainvoke(state)
         
-        # Extract fields with LLM
-        llm_result = await form_processing_service.extract_form_fields(
-            docling_result["markdown"],
-            docling_result["json"],
-            output_dir
-        )
+        if "error" in graph_result and graph_result["error"]:
+             raise HTTPException(status_code=500, detail=graph_result["error"])
         
-        fields = llm_result["fields"]
-        
-        return JSONResponse(content={
-            "success": True,
-            "user_id": user_id,
-            "form_id": form_id,
-            "data": {
-                "page_count": docling_result["page_count"],
-                "field_count": len(fields.get("form_fields", [])),
-                "form_fields": fields,
-                "output_paths": {
-                    "fields": llm_result["path"],
-                    "markdown": docling_result["paths"]["markdown"],
-                    "structure": docling_result["paths"]["json"]
-                }
-            }
-        })
+        return JSONResponse(content=graph_result.get("form_result", {}))
         
     except Exception as e:
         raise HTTPException(

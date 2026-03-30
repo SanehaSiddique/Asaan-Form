@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import {
     FileText,
     CheckCircle,
@@ -19,7 +20,6 @@ import {
 import API from '../../axiosInstance';
 import Button from '@/components/Button';
 import PageTransition from '@/components/PageTransition';
-import { toast } from 'sonner';
 
 const DocumentReview = () => {
     const { formId, documentId } = useParams();
@@ -84,6 +84,25 @@ const DocumentReview = () => {
         newMapping[index] = { ...newMapping[index], value: newValue };
         setMapping(newMapping);
     };
+
+    // Listen for real-time field updates from the Chatbot
+    useEffect(() => {
+        const handleFieldUpdate = (event) => {
+            const { field_key, value } = event.detail;
+            setMapping(prevMapping => {
+                const newMapping = [...prevMapping];
+                const index = newMapping.findIndex(f => f.field_key === field_key);
+                if (index !== -1) {
+                    newMapping[index] = { ...newMapping[index], value };
+                }
+                return newMapping;
+            });
+            toast.success(`Automatically updated ${field_key} via chat`);
+        };
+
+        window.addEventListener("fieldUpdated", handleFieldUpdate);
+        return () => window.removeEventListener("fieldUpdated", handleFieldUpdate);
+    }, []);
 
     const handleContinue = () => {
         navigate(`/form-workspace/${formId}/${documentId}`);
@@ -207,8 +226,8 @@ const DocumentReview = () => {
                                     <motion.div
                                         key={`target-${i}`}
                                         className={`absolute border-2 rounded-md transition-all cursor-pointer ${activeField === i
-                                                ? 'border-asaan-royal bg-asaan-royal/10 ring-8 ring-asaan-royal/5 z-30 shadow-glow'
-                                                : 'border-transparent z-20 hover:border-asaan-sky/40 hover:bg-asaan-sky/5'
+                                            ? 'border-asaan-royal bg-asaan-royal/10 ring-8 ring-asaan-royal/5 z-30 shadow-glow'
+                                            : 'border-transparent z-20 hover:border-asaan-sky/40 hover:bg-asaan-sky/5'
                                             }`}
                                         initial={false}
                                         style={{
@@ -270,8 +289,8 @@ const DocumentReview = () => {
                                         onMouseEnter={() => setActiveField(index)}
                                         onMouseLeave={() => setActiveField(null)}
                                         className={`group relative p-5 rounded-[2rem] border transition-all duration-300 ${activeField === index
-                                                ? 'border-asaan-royal bg-white shadow-medium ring-1 ring-asaan-royal/10 translate-x-1'
-                                                : 'border-border bg-white/40 hover:bg-white/80 hover:border-asaan-sky/30'
+                                            ? 'border-asaan-royal bg-white shadow-medium ring-1 ring-asaan-royal/10 translate-x-1'
+                                            : 'border-border bg-white/40 hover:bg-white/80 hover:border-asaan-sky/30'
                                             }`}
                                     >
                                         <div className="flex justify-between items-center mb-3">

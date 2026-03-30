@@ -15,13 +15,14 @@ from app.chatbot.vectorstore import init_milvus, DocumentStore
 
 
 # ---- Retriever ----
-def get_retriever(collection_name: str = "rag_langchain", k: int = 3):
+def get_retriever(collection_name: str = "rag_langchain", k: int = 3, user_id: Optional[str] = None):
     """
     Initialize Milvus vector store and return a LangChain retriever.
     
     Args:
         collection_name: Milvus collection name (underscore for validity).
         k: Number of top documents to retrieve.
+        user_id: Optional user ID for filtering documents in a shared collection.
     
     Returns:
         LangChain retriever instance.
@@ -35,7 +36,12 @@ def get_retriever(collection_name: str = "rag_langchain", k: int = 3):
     if vectorstore is None:
         raise ValueError(f"Failed to create Milvus vectorstore for collection '{collection_name}'")
     
-    return vectorstore.as_retriever(search_kwargs={"k": k})
+    search_kwargs = {"k": k}
+    if user_id:
+        # Milvus syntax for filtering on JSON field keys
+        search_kwargs["expr"] = f'metadata["user_id"] == "{user_id}"'
+        
+    return vectorstore.as_retriever(search_kwargs=search_kwargs)
 
 
 def get_llm(model: Optional[str] = None):
@@ -63,7 +69,7 @@ def format_docs(docs):
 
 
 # ---- RAG Chain ----
-def get_rag_chain(collection_name: str = "rag_langchain", k: int = 3):
+def get_rag_chain(collection_name: str = "rag_langchain", k: int = 3, user_id: Optional[str] = None):
     """
     Returns a RAG chain using LCEL (LangChain Expression Language) that:
       - Retrieves top-k documents from Milvus (Zilliz Cloud)
@@ -74,11 +80,12 @@ def get_rag_chain(collection_name: str = "rag_langchain", k: int = 3):
     Args:
         collection_name: Milvus collection name.
         k: Number of documents to retrieve.
+        user_id: Optional user ID for filtering documents in a shared collection.
     
     Returns:
         LCEL chain instance with invoke() method.
     """
-    retriever = get_retriever(collection_name=collection_name, k=k)
+    retriever = get_retriever(collection_name=collection_name, k=k, user_id=user_id)
     llm = get_llm()
 
     # Build RAG chain using LCEL
@@ -96,14 +103,14 @@ def get_rag_chain(collection_name: str = "rag_langchain", k: int = 3):
 
 
 # Optional: If you need to return source documents as well
-def get_rag_chain_with_sources(collection_name: str = "rag_langchain", k: int = 3):
+def get_rag_chain_with_sources(collection_name: str = "rag_langchain", k: int = 3, user_id: Optional[str] = None):
     """
     Returns a RAG chain that includes source documents in the response.
     
     Returns:
         Dict with 'result' and 'source_documents' keys.
     """
-    retriever = get_retriever(collection_name=collection_name, k=k)
+    retriever = get_retriever(collection_name=collection_name, k=k, user_id=user_id)
     llm = get_llm()
 
     def rag_with_sources(question: str):

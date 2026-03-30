@@ -16,9 +16,10 @@ from typing import List, Optional, Dict, Any
 from app.config import settings
 from app.chatbot.document_loader import load_and_chunk_file
 from app.chatbot.vectorstore import DocumentStore
-from app.chatbot.rag_chain import get_rag_chain_with_sources
 from app.utils.llm import get_llm
 from langchain_core.messages import HumanMessage
+from pydantic import BaseModel
+from app.schemas.state import AgentState
 import logging
 
 logger = logging.getLogger(__name__)
@@ -119,54 +120,50 @@ async def ingest_faq_files(
     })
 
 
-def _answer_with_llm_fallback(question: str) -> str:
-    """When RAG is unavailable, answer directly with the LLM."""
-    llm = get_llm()
-    response = llm.invoke([HumanMessage(
-        content=f"You are a helpful form and document assistant. Answer concisely and helpfully.\n\nUser question: {question}"
-    )])
-    return response.content if hasattr(response, "content") else str(response)
-
+class ChatbotRequest(BaseModel):
+    question: str
+    collection_name: Optional[str] = "faqs"
+    k: Optional[int] = 3
+    formId: Optional[str] = None
+    documentId: Optional[str] = None
+    userId: Optional[str] = None
+    missing_fields: Optional[List[Dict[str, Any]]] = []
+    document_context: Optional[Dict[str, Any]] = None
+    history: Optional[List[Dict[str, Any]]] = []
 
 @router.post("/ask")
-async def ask_chatbot(
-    question: str = Query(..., description="User question"),
-    collection_name: str = Query(settings.MILVUS_COLLECTION_NAME, description="Milvus collection name (knowledge base)"),
-    k: int = Query(3, ge=1, le=10, description="Top-k chunks to retrieve"),
-):
+async def ask_chatbot(req: ChatbotRequest):
     """
-    Ask a question. Uses RAG over the knowledge base when available; falls back to direct LLM when not.
+    Ask a question. Directly uses the robust chatbot_agent node to handle
+    questions, instructions, and missing field updates via LLM.
     """
     try:
-        qa = get_rag_chain_with_sources(collection_name=collection_name, k=k)
-        result = qa(question)
-
-        answer = result.get("result")
-        sources = []
-        for d in result.get("source_documents") or []:
-            meta = dict(getattr(d, "metadata", {}) or {})
-            sources.append({
-                "filename": meta.get("filename") or meta.get("source"),
-                "page_number": meta.get("page_number"),
-                "chunk_reference": meta.get("chunk_reference"),
-            })
-
+        # Build state context directly for the agent to bypass the Sequential pipeline
+        state_dict = {
+            "intent": "chat",
+            "user_input": req.question,
+            "user_id": req.userId,
+            "history": req.history,
+            "missing_keys": req.missing_fields,
+            "document_context": req.document_context
+        }
+        
+        # Dynamically import to avoid circular dependency
+        from app.agents.chatbot_agent import chatbot_agent
+        
+        # Await the agent execution directly
+        result = await chatbot_agent(state_dict)
+        
+        chatbot_res = result.get("results", {}).get("chatbot", {})
+        
         return JSONResponse(content={
-            "collection_name": collection_name,
-            "question": question,
-            "answer": answer,
-            "sources": sources,
+            "collection_name": req.collection_name,
+            "question": req.question,
+            "answer": chatbot_res.get("answer", "I could not answer that."),
+            "sources": chatbot_res.get("sources", []),
+            "field_update": chatbot_res.get("field_update"),
+            "field_updates": chatbot_res.get("field_updates", []),  # ← LIFT THIS UP
         })
     except Exception as e:
-        logger.warning("RAG ask failed, using LLM fallback: %s", e)
-        try:
-            answer = _answer_with_llm_fallback(question)
-            return JSONResponse(content={
-                "collection_name": collection_name,
-                "question": question,
-                "answer": answer,
-                "sources": [],
-            })
-        except Exception as fallback_err:
-            logger.exception("LLM fallback failed")
-            raise HTTPException(status_code=500, detail=str(fallback_err))
+        logger.exception("Chatbot agent failed")
+        raise HTTPException(status_code=500, detail=str(e))
