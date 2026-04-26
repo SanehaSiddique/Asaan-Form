@@ -7,7 +7,10 @@ import logging
 import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from langchain_milvus import Milvus
+try:
+    from langchain_milvus import Milvus
+except (ImportError, Exception):
+    from langchain_community.vectorstores import Milvus
 from pymilvus import connections, Collection, CollectionSchema, FieldSchema, DataType, utility
 from app.chatbot.embeddings import get_embeddings_model
 from app.config import settings

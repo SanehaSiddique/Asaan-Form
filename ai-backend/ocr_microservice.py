@@ -1,5 +1,20 @@
+import os
+
+# Apply PaddlePaddle stability fixes before any other imports
+os.environ["FLAGS_use_mkldnn"] = "0"
+os.environ["FLAGS_use_mkldnn"] = "false"
+os.environ["FLAGS_enable_pir_api"] = "0"
+os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
+
 import torch
 import gc
+import paddle
+
+try:
+    paddle.set_flags({'FLAGS_use_mkldnn': False, 'FLAGS_enable_pir_api': 0})
+except Exception:
+    pass
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 import cv2
@@ -34,7 +49,10 @@ class OCRRequest(BaseModel):
 _use_gpu = torch.cuda.is_available()
 print(f"Initializing PaddleOCR (GPU={_use_gpu})...")
 # Standard English engine
-ocr_engine = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=_use_gpu, show_log=False)
+ocr_engine = PaddleOCR(
+    use_textline_orientation=True,
+    lang='en'
+)
 print("PaddleOCR Initialized.")
 
 if hasattr(torch.serialization, "add_safe_globals"):
@@ -143,7 +161,7 @@ def extract_english(req: OCRRequest):
             # Returns a list of lists: results[0] is the result for the image.
             # Each entry: [ [ [x1,y1],[x2,y1],[x2,y2],[x1,y2] ], (text, confidence) ]
             try:
-                results = ocr_engine.ocr(img, cls=True)
+                results = ocr_engine.ocr(img)
             except Exception as ocr_inner_err:
                 print(f"  ⚠️ OCR Engine failed on page {page_num}: {ocr_inner_err}")
                 continue

@@ -1,16 +1,29 @@
 import json
+import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
+import traceback
 
-from docling.datamodel.pipeline_options import (
-    PdfPipelineOptions
-)
-from docling.document_converter import (
-    DocumentConverter,
-    InputFormat,
-    ImageFormatOption,
-    PdfFormatOption
-)
+# Optional: PyMuPDF as fallback
+try:
+    import fitz
+    PYMUPDF_AVAILABLE = True
+except ImportError:
+    PYMUPDF_AVAILABLE = False
+
+# Docling imports with safety
+try:
+    from docling.datamodel.pipeline_options import PdfPipelineOptions
+    from docling.document_converter import (
+        DocumentConverter,
+        InputFormat,
+        ImageFormatOption,
+        PdfFormatOption
+    )
+    DOCLING_AVAILABLE = True
+except (ImportError, Exception) as e:
+    print(f"⚠️ Docling unavailable or blocked by policy: {e}")
+    DOCLING_AVAILABLE = False
 
 
 class DoclingService:
@@ -32,6 +45,11 @@ class DoclingService:
         # Cache converters for performance
         self._image_converter = None
         self._pdf_converter = None
+        
+        if not DOCLING_AVAILABLE:
+            print("🛑 Docling is NOT available. Falling back to PyMuPDF (fitz) mode.")
+            if not PYMUPDF_AVAILABLE:
+                print("❌ WARNING: PyMuPDF is also not available! Document processing WILL fail.")
     
     async def process_document(
         self, 
@@ -64,14 +82,26 @@ class DoclingService:
         
         # Get the right converter for this file type
         file_extension = file_path.suffix.lower()
-        converter = self._get_converter(file_extension)
         
-        # Convert the document
-        print("  Converting document...")
-        result = converter.convert(str(file_path))
-        doc = result.document
-        
-        print(f"✓ Converted {len(doc.pages)} pages")
+        # Check if we can use Docling
+        if DOCLING_AVAILABLE:
+            try:
+                converter = self._get_converter(file_extension)
+                print("  Converting document with Docling...")
+                result = converter.convert(str(file_path))
+                doc = result.document
+                print(f"✓ Converted {len(doc.pages)} pages")
+                
+                # Get content based on Docling format
+                markdown_content = doc.export_to_markdown()
+                json_content = doc.export_to_dict()
+                page_count = len(doc.pages)
+            except Exception as e:
+                print(f"  ⚠️ Docling conversion failed: {e}. Trying fallback...")
+                markdown_content, json_content, page_count = self._fallback_convert(file_path)
+        else:
+            # Automatic fallback if Docling was never loaded
+            markdown_content, json_content, page_count = self._fallback_convert(file_path)
         
         # Get output directory
         out_dir = Path(output_dir) if output_dir else self.default_output_dir
@@ -79,17 +109,84 @@ class DoclingService:
         
         # Save outputs to files if requested
         if save_outputs:
-            outputs = self._save_outputs(doc, file_path.stem, out_dir)
+            # Create a mock doc-like object if we used fallback
+            outputs = self._save_outputs_manual(markdown_content, json_content, page_count, file_path.stem, out_dir)
         else:
             # Return just the content without saving
             outputs = {
-                "markdown": doc.export_to_markdown(),
-                "json": doc.export_to_dict(),
-                "page_count": len(doc.pages),
+                "markdown": markdown_content,
+                "json": json_content,
+                "page_count": page_count,
                 "paths": {}
             }
         
         return outputs
+
+    def _fallback_convert(self, file_path: Path) -> tuple[str, dict[str, Any], int]:
+        """Fallback processing using PyMuPDF"""
+        if not PYMUPDF_AVAILABLE:
+            raise RuntimeError("No document processing libraries available (Docling blocked, PyMuPDF missing)")
+        
+        print(f"  ⚡ Using PyMuPDF fallback for: {file_path.name}")
+        
+        file_extension = file_path.suffix.lower()
+        if file_extension == '.pdf':
+            doc = fitz.open(str(file_path))
+            page_count = len(doc)
+            
+            markdown_parts = []
+            all_texts = []
+            
+            for i in range(page_count):
+                page = doc[i]
+                text = page.get_text("text")
+                markdown_parts.append(f"## Page {i+1}\n\n{text}")
+                
+                # Extract blocks for JSON structure (similar to Docling's texts)
+                blocks = page.get_text("blocks")
+                for b in blocks:
+                    # b: (x0, y0, x1, y1, "text", block_no, block_type)
+                    all_texts.append({
+                        "text": b[4],
+                        "bbox": [b[0], b[1], b[2], b[3]],
+                        "page": i + 1
+                    })
+            
+            doc.close()
+            
+            markdown_content = "\n\n---\n\n".join(markdown_parts)
+            json_content = {
+                "texts": all_texts,
+                "metadata": {"source": str(file_path), "method": "PyMuPDF fallback"}
+            }
+            
+            return markdown_content, json_content, page_count
+        else:
+            # For images, if Docling is blocked, we have a problem
+            # But maybe OCR service can handle it if we refactor further.
+            # For now, just return empty/warning
+            return f"# Warning: Image processing requires Docling (Blocked on this machine)", {"texts": []}, 1
+
+    def _save_outputs_manual(self, markdown: str, json_data: dict, page_count: int, base_name: str, output_dir: Path) -> dict:
+        """Manually save outputs when not using Docling objects"""
+        markdown_path = output_dir / f"{base_name}.md"
+        markdown_path.write_text(markdown, encoding='utf-8')
+        
+        json_path = output_dir / f"{base_name}.json"
+        json_path.write_text(
+            json.dumps(json_data, indent=2, ensure_ascii=False),
+            encoding='utf-8'
+        )
+        
+        return {
+            "markdown": markdown,
+            "json": json_data,
+            "page_count": page_count,
+            "paths": {
+                "markdown": str(markdown_path),
+                "json": str(json_path)
+            }
+        }
     
     def _get_converter(self, file_extension: str) -> DocumentConverter:
         """

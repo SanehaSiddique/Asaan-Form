@@ -22,16 +22,16 @@ def _build_system_prompt(missing_fields: list, document_context: dict = None, va
         "CRITICAL INSTRUCTION — FIELD UPDATES:\n"
         "If a user provides personal info (name, CNIC, etc.) or confirms a value,\n"
         "you MUST act as a data entry clerk and emit a coded update.\n\n"
-        "1. Direct Confirmation: Say \"I've updated the [field]!\" neatly.\n"
+        "1. Direct Confirmation: Say \"I've updated the [field_name]!\" neatly in your chat response.\n"
         "2. Coded Marker: On a NEW LINE by itself, output EXACTLY this format:\n"
         "FIELD_UPDATE: {\"field_key\": \"key_from_list\", \"value\": \"the_value\"}\n\n"
-        "RULES:\n"
-        "- NEVER say you updated something without the FIELD_UPDATE marker.\n"
+        "RULES FOR MARKERS:\n"
+        "- NEVER say you updated something in text without providing the FIELD_UPDATE marker line.\n"
         "- If you talk about multiple fields, output one marker line per field.\n"
-        "- Use the list in MISSING_FIELDS to find the exact 'key' string.\n"
-        "- DO NOT invent keys. If not in the list, do not emit a marker.\n"
+        "- ALWAYS use the exact string from the 'key' part in the MISSING_FIELDS list.\n"
+        "- The JSON must have exactly two keys: \"field_key\" and \"value\".\n"
         "- DO NOT say \"I think I updated it\" — be certain or ask for clarification.\n\n"
-        "MISSING FORM FIELDS (Keys to use in FIELD_UPDATE):\n"
+        "MISSING FORM FIELDS (Keys to use in the 'field_key' of FIELD_UPDATE):\n"
     )
 
     if validation_feedback and "VALID" not in validation_feedback.upper():
@@ -62,22 +62,69 @@ def _build_system_prompt(missing_fields: list, document_context: dict = None, va
     
     return base
 
-def _extract_field_updates(answer: str) -> list:
-    """Extract all FIELD_UPDATE blocks from LLM response. Returns list of dicts."""
+def _extract_field_updates(answer: str, missing_fields: list) -> list:
+    """
+    Extract all FIELD_UPDATE blocks from LLM response. 
+    Returns list of dicts: [{'field_key': '...', 'value': '...'}]
+    Now more robust to common LLM formatting variations.
+    """
     marker = "FIELD_UPDATE:"
     updates = []
     lines = answer.split('\n')
+    
+    # Pre-calculate valid keys for faster lookup
+    valid_keys = set()
+    for f in (missing_fields or []):
+        if 'field_key' in f:
+            valid_keys.add(f['field_key'])
+            
     for line in lines:
         line = line.strip()
-        if line.startswith(marker):
+        if marker in line:  # Be more flexible than startswith
             try:
-                json_str = line[len(marker):].strip()
-                if json_str.startswith("{"):
-                    update = json.loads(json_str)
-                    if update.get("field_key") and update.get("value") is not None:
-                        updates.append(update)
-            except Exception:
-                pass
+                # Extract JSON part
+                json_start = line.find("{")
+                if json_start == -1:
+                    continue
+                json_str = line[json_start:].strip()
+                
+                # Try to parse
+                update_raw = json.loads(json_str)
+                processed_update = None
+                
+                # Case 1: Standard format {"field_key": "...", "value": "..."}
+                if "field_key" in update_raw and "value" in update_raw:
+                    processed_update = {
+                        "field_key": str(update_raw["field_key"]),
+                        "value": str(update_raw["value"])
+                    }
+                
+                # Case 2: Robust Fallback (handles LLM hallucinations like {"key_name": "...", "value": "..."})
+                # If "field_key" is missing, look for ANY key that matches a known field key
+                elif "value" in update_raw:
+                    for key, val in update_raw.items():
+                        if key == "value": continue
+                        # If the key itself is a valid candidate
+                        if key in valid_keys:
+                            processed_update = {"field_key": key, "value": str(update_raw["value"])}
+                            break
+                        # If the value of this key is a valid candidate (LLM did {"field": "key_here", "value": "..."})
+                        if str(val) in valid_keys:
+                            processed_update = {"field_key": str(val), "value": str(update_raw["value"])}
+                            break
+
+                if processed_update:
+                    # Final sanity check: key MUST be in our valid set to prevent hallucinations
+                    if processed_update["field_key"] in valid_keys:
+                        updates.append(processed_update)
+                    else:
+                        print(f"  ⚠️ Rejected update with unknown key: {processed_update['field_key']}")
+                else:
+                    print(f"  ⚠️ Failed to extract valid field/value from: {json_str}")
+                    
+            except Exception as e:
+                print(f"  ⚠️ JSON parse error in field update line: {e}")
+                
     return updates
 
 async def chatbot_agent(state: AgentState) -> AgentState:
@@ -115,7 +162,7 @@ async def chatbot_agent(state: AgentState) -> AgentState:
         
         print(f"  🤖 LLM Raw Response:\n---\n{response}\n---")
         
-        field_updates = _extract_field_updates(response)  # list, may be empty
+        field_updates = _extract_field_updates(response, missing_fields)  # list, may be empty
         if field_updates:
             print(f"  ✅ Extracted {len(field_updates)} field updates: {field_updates}")
         else:
