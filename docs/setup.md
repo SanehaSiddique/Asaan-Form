@@ -10,7 +10,7 @@ This guide provides detailed instructions for setting up the Asaan-Form project 
 - **Python**: v3.10.x (Recommended)
 - **MongoDB**: Local instance or MongoDB Atlas
 - **Milvus/Zilliz**: Vector database for RAG features
-- **OpenRouter/Groq**: API keys for LLM
+- **Groq**: API key (Llama 3.3)
 
 ---
 
@@ -82,7 +82,7 @@ Create `.env` files in `ai-backend/` and `node-backend/` using the following tem
 
 ### AI Backend (.env)
 ```env
-OPENROUTER_API_KEY=your_key
+GROQ_API_KEY=your_key
 MILVUS_URI=your_zilliz_uri
 MILVUS_PASSWORD=your_zilliz_password
 ```

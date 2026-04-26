@@ -1,107 +1,135 @@
-# 📄 Asaan-Form: Your AI Form Assistant
+# 📄 Asaan-Form: AI-Driven Form Automation
 
-[![FYP Phase II](https://img.shields.io/badge/FYP-Phase_II_95%25-blue.svg)](https://github.com/sanehasiddique/Asaan-Form)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Stack: MERN + FastAPI + AI](https://img.shields.io/badge/Stack-MERN_%2B_FastAPI_%2B_AI-green.svg)](#-technology-stack)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Stack: MERN + FastAPI + AI](https://img.shields.io/badge/Stack-MERN_%2B_FastAPI_%2B_AI-green.svg)](#)
+[![Python: 3.10+](https://img.shields.io/badge/Python-3.10%2B-yellow.svg)](#)
+[![Node: 18+](https://img.shields.io/badge/Node-18%2B-yellow.svg)](#)
 
-**Asaan-Form** is an intelligent, multi-agent AI system designed to automate document understanding and form filling. By combining cutting-edge OCR, layout analysis, and agentic workflows, it transforms unstructured documents into structured data and guides users through an interactive AI chatbot experience.
-
----
-
-## ✨ Key Features (Phase II Updates)
-
-- 🤖 **Multi-Agent Orchestration**: Powered by **LangGraph**, utilizing specialized agents for intent detection, form processing, and document analysis.
-- 🌍 **Multilingual OCR Microservice**: High-accuracy text extraction for both **English and Urdu** using PaddleOCR and UTRNet, now decoupled for maximum stability.
-- 💬 **Reliable Chatbot Pipeline**: A stabilized interaction loop that supports **multi-field updates** in a single go, ensured by strict `FIELD_UPDATE` marker protocols.
-- 🔄 **Self-Healing Validation**: Includes an automatic **3-retry loop** for auto-mapping. If the AI detects a hallucination, it attempts to "fix itself" before handing off to the user.
-- 🧠 **Flexible Semantic Mapping**: The AI now uses "common sense" reasoning (e.g., automatically inferring Nationality from a CNIC) and is resilient to OCR noise.
-- 🛡️ **Payload Protection**: Automatic OCR truncation to prevent `413 Request Too Large` errors during heavy document processing.
-- 📑 **Advanced Layout Analysis**: Deep document understanding using **Docling** to extract fields, coordinates, and structural elements.
+**Asaan-Form** is an end-to-end intelligent document ecosystem designed to simplify complex administrative tasks. It leverages **Agentic AI Orchestration** to transform unstructured documents (CNICs, transcripts, applications) into structured data, guiding users through it with a sympathetic multilingual chatbot.
 
 ---
 
-## 🏗️ System Architecture
+## 🌟 Core System Features
 
-Asaan-Form follows a robust, decoupled architecture:
+### 🤖 Intelligent Agent Orchestration
+Powered by **LangGraph**, the system employs specialized AI agents that collaborate to ensure accuracy:
+- **Intent Agent**: Detects user needs and handles document routing.
+- **Mapping Agent**: Performs semantic mapping of extracted text to form fields.
+- **Validator Agent**: Detects hallucinations or data mismatches, triggering a self-healing retry loop.
+- **Chatbot Agent**: A friendly RAG-enabled assistant that resolves missing information through interactive dialogue.
 
-1.  **Frontend (React + Redux)**: Intuitive dashboard with real-time WebSocket sync for chatbot field updates.
-2.  **Node.js Backend**: Handles user authentication, MongoDB persistence, and acts as the WebSocket gateway.
-3.  **AI Backend (FastAPI + LangGraph)**: The "brain," orchestrating agents and processing RAG tasks (Port 8000).
-4.  **OCR Microservice**: A dedicated worker for PaddleOCR and UTRNet to ensure memory efficiency and prevent event-loop blocking (Port 8001).
+### 🌍 Multilingual Vision Engine
+A dedicated OCR microservice decoupled for high performance:
+- **Bilingual Support**: Specialized extraction for **English** (PaddleOCR) and **Urdu** (UTRNet/YOLOv8).
+- **Layout Awareness**: Utilizes **Docling** to understand document hierarchy, table structures, and field coordinates.
+- **Pre-processing**: Automatic image enhancement and noise reduction for low-quality uploads.
 
----
-
-## 🛠️ Technology Stack
-
-| Layer | Technologies |
-| :--- | :--- |
-| **Frontend** | React.js, Tailwind CSS, Redux Toolkit |
-| **Backends** | Node.js (Express), FastAPI (Python) |
-| **OCR Service** | PaddleOCR, UTRNet, YOLOv8 (Urdu Doc) |
-| **AI & NLP** | LangChain, LangGraph, Docling |
-| **LLM** | Meta Llama 3.3 (via OpenRouter/ Groq) |
-| **Databases** | MongoDB (User data), Milvus (Vector store) |
+### 🔄 Interactive Form Workspace
+- **Real-time Sync**: Watch form fields update live as you chat with the AI.
+- **Self-Healing Loop**: The system automatically attempts to verify data 3 times before asking for user intervention.
+- **One-Click Export**: Generate finalized, high-fidelity PDFs once the data is validated.
 
 ---
 
-## 🚀 Quick Start
+## 🏗️ Technical Architecture
 
-### Prerequisites
-- Node.js ≥ v18
-- Python ≥ v3.10
-- MongoDB
-- NVIDIA GPU (Optional, but recommended for OCR speed)
-
-### Installation & Run
-
-1. **Clone the repo:**
-   ```bash
-   git clone https://github.com/sanehasiddique/Asaan-Form.git
-   cd Asaan-Form
-   ```
-
-2. **Setup Services (Run in separate terminals):**
-
-   **AI Backend & OCR Service:**
-   ```bash
-   cd ai-backend
-   # On Windows:
-   ./start.bat
-   # On Linux/Mac:
-   chmod +x start.sh && ./start.sh
-   ```
-   *Note: This starts the main API on port 8000 and the OCR worker on port 8001.*
-
-   **Node Backend:**
-   ```bash
-   cd node-backend
-   npm install
-   node server.js
-   ```
-
-   **Frontend:**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
----
-
-## 👥 Team Members
-
-| Name | Role | Contribution |
+| Component | Responsibility | Stack |
 | :--- | :--- | :--- |
-| **Saneha Siddique** | Group Leader | Backend Orchestration, UrduOCR, Dynamic React Mapping |
-| **Zainab Khalid** | OCR Specialist | OCR & Layout, Form Extraction, Semantic Mapping |
-| **Faiqa Mustafa** | Frontend Dev | UI/UX Design, State Management, Integration |
-| **Aqsa Hussain** | AI/RAG Dev | Requirement Analysis, RAG Implementation, Node Backend |
+| **Frontend** | User Dashboard & Form Viewer | React.js, Redux Toolkit, Tailwind CSS |
+| **Node API** | User Auth, Persistence, WebSocket Proxy | Node.js (Express), MongoDB |
+| **AI Core** | Multi-Agent Orchestration (Brain) | FastAPI, LangChain, LangGraph |
+| **OCR Service** | Vision Processing worker | PaddleOCR, UTRNet, YOLOv8, Docling |
+| **LLM Engine** | Inference Infrastructure | Groq (Llama 3.3) |
 
 ---
 
-## 📄 License & Credits
+## 🚀 Installation & Setup
 
-Distributed under the MIT License. Developed for the Final Year Project, Department of Computer Science, **University of the Punjab**.
+### 📋 System Prerequisites
+- **Python 3.10+** (Virtual environment recommended)
+- **Node.js 18+**
+- **MongoDB** (Local or Atlas)
+- **Redis** (Optional, for caching)
 
-**Version**: 2.1.0 (Phase-II 95% Complete)  
-**Last Updated**: March 2026
+### 1. Repository Setup
+```bash
+git clone https://github.com/sanehasiddique/Asaan-Form.git
+cd Asaan-Form
+```
+
+### 2. AI Backend & OCR Strategy
+Detailed setup for the "Brain" of the system:
+```bash
+cd ai-backend
+
+# Windows
+python -m venv asaan-env-310
+asaan-env-310\Scripts\activate
+pip install -r requirements.txt
+./start.bat
+
+# Linux / MacOS
+python3 -m venv asaan-env-310
+source asaan-env-310/bin/activate
+pip install -r requirements.txt
+chmod +x start.sh && ./start.sh
+```
+
+### 3. Node.js Middleware
+```bash
+cd node-backend
+npm install
+
+# Configuration: Create .env based on .env.example
+# Run Service
+npm run dev
+```
+
+### 4. Interactive Frontend
+```bash
+cd frontend
+npm install
+
+# Launch Development Server
+npm run dev
+```
+
+---
+
+## 🔑 Environment Configuration
+
+| Variable | Description | Value |
+| :--- | :--- | :--- |
+| `GROQ_API_KEY` | LLM Access Key (Llama 3.3) | `your_key_here` |
+| `MONGODB_URI` | Mongo Connection String | `mongodb://...` |
+| `MILVUS_URI` | Vector Database Endpoint | `zilliz_cloud_url` |
+| `AI_BACKEND_URL` | Cross-service communication | `http://localhost:8000` |
+
+---
+
+## 🛠️ Performance & Troubleshooting
+
+- **Memory Management**: The OCR service runs on port `8001` to isolate CPU-heavy vision tasks from the main API.
+- **Port Conflicts**: Ensure `8000` (AI API), `8001` (OCR), `3000` (Node), and `5173` (Frontend) are available.
+- **Dependency Issues**: If `paddlex` fails on Windows, refer to the [Setup Guide Patch](docs/setup.md).
+
+---
+
+## 📚 Documentation
+- [**Detailed Setup Guide**](docs/setup.md): Comprehensive installation steps, environment patching, and OS-specific instructions.
+- [**Requirement Analysis**](docs/requirements.md): Overview of project scope and functional requirements.
+
+---
+
+## 📄 License & Team
+
+Developed with ❤️ for the Final Year Project at **University of the Punjab**.  
+Distributed under the **MIT License**.
+
+- **Saneha Siddique**: Backend Lead & Urdu Engine
+- **Zainab Khalid**: OCR & Semantic Mapping
+- **Faiqa Mustafa**: UX/UI & State Management
+- **Aqsa Hussain**: RAG & Knowledge Base
+
+---
+© 2026 Asaan-Form Project Team.
