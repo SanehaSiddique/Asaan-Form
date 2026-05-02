@@ -20,6 +20,7 @@ router.get("/form/:formId/document/:documentId/fill-data", uploadController.getF
 router.post("/document/map", upload.single("file"), uploadController.uploadAndMapDocument);
 router.put("/document/mapping/:id", uploadController.updateMapping);
 router.put("/document/exclude/:id", uploadController.toggleDocumentExclusion);
+router.post("/validate-identities", uploadController.validateIdentities);
 
 // Dashboard lists
 router.get("/forms/user/:userId", uploadController.listUserForms);

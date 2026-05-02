@@ -9,6 +9,7 @@ import UploadBox from '@/components/UploadBox';
 import PageTransition from '@/components/PageTransition';
 import API from '../../axiosInstance';
 import { toast } from 'sonner';
+import DocumentClashModal from '@/components/DocumentClashModal';
 
 const UploadDocuments = () => {
   const [files, setFiles] = useState([]);
@@ -17,6 +18,9 @@ const UploadDocuments = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const formId = searchParams.get('formId');
+  const [showClashModal, setShowClashModal] = useState(false);
+  const [clashReport, setClashReport] = useState(null);
+  const [uploadedDocIDs, setUploadedDocIDs] = useState([]);
 
   const handleFilesChange = (newFiles) => {
     setFiles(newFiles);
@@ -49,27 +53,51 @@ const UploadDocuments = () => {
 
     try {
       setUploading(true);
-      const endpoint = formId ? 'upload/document/map' : 'upload/document';
+      const endpoint = 'upload/document';
+      // Upload all selected documents sequentially
       let lastDocumentId = null;
-
-      // Upload all selected documents sequentially so multi-upload actually works
-      // The last successful document ID is used for the workspace navigation
+      const docIDs = [];
       for (const fileItem of validFiles) {
         const formData = new FormData();
         formData.append('file', fileItem.rawFile);
         formData.append('userID', userId);
-        formData.append('documentType', 'id_card'); // Defaulting to id_card for now, can be improved
+        formData.append('documentType', 'id_card'); 
         if (formId) {
           formData.append('formID', formId);
         }
 
-        // eslint-disable-next-line no-await-in-loop
         const response = await API.post(endpoint, formData, {
           headers: { 'Content-Type': undefined },
         });
 
         if (response.data?.document?._id) {
           lastDocumentId = response.data.document._id;
+          docIDs.push(response.data.document._id);
+        }
+      }
+
+      setUploadedDocIDs(docIDs);
+
+      // --- NEW: Identity Conflict Check ---
+      if (docIDs.length >= 2) {
+        try {
+          const clashResponse = await API.post('upload/validate-identities', {
+            userID: userId,
+            documentIDs: docIDs
+          });
+
+          if (clashResponse.data?.has_clash) {
+            setClashReport(clashResponse.data.clash_report);
+            setShowClashModal(true);
+            return; // Pause here, modal will handle navigation
+          }
+        } catch (clashError) {
+          if (clashError.response?.status === 409) {
+            setClashReport(clashError.response.data.clash_report);
+            setShowClashModal(true);
+            return; // Pause here, modal will handle navigation
+          }
+          console.error("Clash detection error:", clashError);
         }
       }
 
@@ -79,7 +107,6 @@ const UploadDocuments = () => {
             ? `Uploaded ${validFiles.length} document(s) and mapped to form`
             : `Uploaded ${validFiles.length} document(s)`
         );
-        // Go directly to the form workspace; skip the intermediate review page
         navigate(`/form-workspace/${formId}/${lastDocumentId}`);
       } else {
         toast.error("Upload finished but no document ID was returned. Please try again.");
@@ -94,6 +121,26 @@ const UploadDocuments = () => {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleClashResolved = async (excludedFilenames) => {
+    // 1. Mark excluded docs in backend
+    for (const filename of excludedFilenames) {
+      const doc = clashReport.identities.flatMap(id => id.documents).find(d => d.filename === filename);
+      if (doc?.id) {
+        await API.put(`upload/document/exclude/${doc.id}`, { isExcluded: true });
+      }
+    }
+
+    // 2. Proceed to workspace with the remaining documents
+    const remainingIDs = uploadedDocIDs.filter(id => {
+      const doc = clashReport.identities.flatMap(id => id.documents).find(d => d.id === id);
+      return !excludedFilenames.includes(doc?.filename);
+    });
+
+    const nextDocId = remainingIDs[0] || uploadedDocIDs[0];
+    toast.success("Identity conflict resolved. Proceeding with selected documents.");
+    navigate(`/form-workspace/${formId}/${nextDocId}?ignoreClash=true`);
   };
 
   const documentTypes = [
@@ -194,6 +241,13 @@ const UploadDocuments = () => {
                 onFilesChange={handleFilesChange}
                 label="Upload Supporting Documents"
                 description="Drag and drop your documents here, or click to browse"
+              />
+
+              <DocumentClashModal
+                isOpen={showClashModal}
+                onClose={() => setShowClashModal(false)}
+                clashReport={clashReport}
+                onResolved={handleClashResolved}
               />
 
               <motion.div

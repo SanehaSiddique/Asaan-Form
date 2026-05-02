@@ -367,43 +367,45 @@ exports.getFillData = async (req, res) => {
             return res.status(400).json({ message: "No active documents found for mapping. Please include at least one document." });
         }
 
-        // --- NEW: Identity Validation Step ---
-        try {
-            console.log(`[getFillData] Validating identities for: ${activeFilenames.join(",")}`);
-            const valForm = new FormData();
-            valForm.append("user_id", userID);
-            valForm.append("document_filenames", activeFilenames.join(","));
-            
-            const valResponse = await axios.post(`${AI_BACKEND_URL}/fill/validate-identities`, valForm, {
-                headers: valForm.getHeaders(),
-                timeout: 60000
-            });
-            
-            if (valResponse.data?.has_clash) {
-                console.log("[getFillData] ⚠️ Identity clash detected!");
+        // --- Identity Validation Step ---
+        const ignoreClash = req.query.ignoreClash === 'true';
+        if (!ignoreClash) {
+            try {
+                console.log(`[getFillData] Validating identities for: ${activeFilenames.join(",")}`);
+                const valForm = new FormData();
+                valForm.append("user_id", userID);
+                valForm.append("document_filenames", activeFilenames.join(","));
                 
-                // Map AI filenames back to MongoDB IDs for the frontend to use
-                const enrichedClashReport = { ...valResponse.data };
-                if (enrichedClashReport.identities) {
-                    enrichedClashReport.identities = enrichedClashReport.identities.map(identity => ({
-                        ...identity,
-                        documents: identity.documents.map(aiDoc => {
-                            const mongoDoc = allUserDocs.find(d => d.aiFilename === aiDoc.filename);
-                            return {
-                                ...aiDoc,
-                                id: mongoDoc ? mongoDoc._id : null
-                            };
-                        })
-                    }));
-                }
-
-                return res.status(409).json({
-                    message: "Identity clash detected across documents",
-                    clash_report: enrichedClashReport
+                const valResponse = await axios.post(`${AI_BACKEND_URL}/fill/validate-identities`, valForm, {
+                    headers: valForm.getHeaders(),
+                    timeout: 60000
                 });
+                
+                if (valResponse.data?.has_clash) {
+                    console.log("[getFillData] ⚠️ Identity clash detected!");
+                    
+                    const enrichedClashReport = { ...valResponse.data };
+                    if (enrichedClashReport.identities) {
+                        enrichedClashReport.identities = enrichedClashReport.identities.map(identity => ({
+                            ...identity,
+                            documents: identity.documents.map(aiDoc => {
+                                const mongoDoc = allUserDocs.find(d => d.aiFilename === aiDoc.filename);
+                                return {
+                                    ...aiDoc,
+                                    id: mongoDoc ? mongoDoc._id : null
+                                };
+                            })
+                        }));
+                    }
+
+                    return res.status(409).json({
+                        message: "Identity clash detected across documents",
+                        clash_report: enrichedClashReport
+                    });
+                }
+            } catch (valErr) {
+                console.error("[getFillData] Identity validation warning (skipped):", valErr.message);
             }
-        } catch (valErr) {
-            console.error("[getFillData] Identity validation warning (skipped):", valErr.message);
         }
         // --- End Validation ---
 
@@ -709,5 +711,58 @@ exports.deleteDocument = async (req, res) => {
         res.status(200).json({ message: "Document deleted successfully" });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+// Validate identities across multiple documents (Standalone call for Upload page)
+exports.validateIdentities = async (req, res) => {
+    try {
+        const { userID, documentIDs } = req.body;
+        if (!userID) {
+            return res.status(400).json({ message: "userID is required" });
+        }
+
+        // We should check the NEW documents AGAINST each other AND AGAINST previous ACTIVE documents
+        const allDocs = await Document.find({ user: userID, isExcluded: { $ne: true } });
+        const aiFilenames = allDocs
+            .map(d => d.aiFilename)
+            .filter(fn => fn && fn.trim().length > 0);
+
+        if (aiFilenames.length < 2) {
+            return res.status(200).json({ has_clash: false });
+        }
+
+        console.log(`[validateIdentities] Checking clash for user ${userID} across ALL (${aiFilenames.length}) docs`);
+
+        const valForm = new FormData();
+        valForm.append("user_id", userID);
+        valForm.append("document_filenames", aiFilenames.join(","));
+
+        const aiResponse = await axios.post(`${AI_BACKEND_URL}/fill/validate-identities`, valForm, {
+            headers: valForm.getHeaders(),
+            timeout: 60000
+        });
+
+        if (aiResponse.data?.has_clash) {
+            const report = { ...aiResponse.data };
+            if (report.identities) {
+                report.identities = report.identities.map(identity => ({
+                    ...identity,
+                    documents: identity.documents.map(aiDoc => {
+                        const mongoDoc = allDocs.find(d => d.aiFilename === aiDoc.filename);
+                        return {
+                            ...aiDoc,
+                            id: mongoDoc ? mongoDoc._id : null
+                        };
+                    })
+                }));
+            }
+            return res.status(409).json({ has_clash: true, clash_report: report });
+        }
+
+        res.status(200).json({ has_clash: false });
+    } catch (error) {
+        console.error("Identity validation error:", error.message);
+        res.status(500).json({ message: "Validation failed", error: error.message });
     }
 };
