@@ -22,6 +22,12 @@ import API from '../../axiosInstance';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import PageTransition from '@/components/PageTransition';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+import DocumentClashModal from '../components/DocumentClashModal';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const fieldTypeToInputType = (fieldType) => {
     if (!fieldType) return 'text';
@@ -47,12 +53,15 @@ const FormWorkspace = () => {
     const [zoom, setZoom] = useState(0.85);
     const [downloading, setDownloading] = useState(false);
     const [formImageSize, setFormImageSize] = useState({ width: 0, height: 0 });
+    const [numPages, setNumPages] = useState(null);
+    const [clashReport, setClashReport] = useState(null);
+    const [isClashModalOpen, setIsClashModalOpen] = useState(false);
 
     const containerRef = useRef(null);
 
     // Convert coordinates: backend may send Docling (y-up / bottom-left) or top-left (y-down)
     const toCssBox = (box, imgHeight) => {
-        if (!box || box.length < 4 || !imgHeight) return { left: box[0], top: box[1], width: box[2] - box[0], height: box[3] - box[1] };
+        if (!box || box.length < 4 || !imgHeight) return { left: 0, top: 0, width: 0, height: 0 };
         const left = box[0];
         const right = box[2];
         const width = right - left;
@@ -66,6 +75,37 @@ const FormWorkspace = () => {
         }
         return { left, top: y1, width, height: y2 - y1 };
     };
+
+    // Bidirectional Scrolling
+    useEffect(() => {
+        if (activeField !== null) {
+            // 1. Scroll React form to field
+            const fieldElement = window.document.getElementById(`field-container-${activeField}`);
+            if (fieldElement) {
+                fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            // 2. Scroll PDF/Image container to the label highlight
+            const overlayElement = window.document.getElementById(`overlay-label-${activeField}`);
+            const scrollContainer = containerRef.current;
+            if (overlayElement && scrollContainer) {
+                const containerRect = scrollContainer.getBoundingClientRect();
+                const overlayRect = overlayElement.getBoundingClientRect();
+                
+                // Only scroll if outside visible area (with 50px padding)
+                const isVisible = (
+                    overlayRect.top >= containerRect.top + 50 &&
+                    overlayRect.bottom <= containerRect.bottom - 50 &&
+                    overlayRect.left >= containerRect.left + 50 &&
+                    overlayRect.right <= containerRect.right - 50
+                );
+
+                if (!isVisible) {
+                    overlayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+    }, [activeField]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -158,6 +198,12 @@ const FormWorkspace = () => {
                 });
                 setFormValues(initial);
             } catch (error) {
+                if (error.response?.status === 409) {
+                    // Identity clash detected
+                    setClashReport(error.response.data.clash_report);
+                    setIsClashModalOpen(true);
+                    return;
+                }
                 console.error("Error fetching workspace data:", error);
                 toast.error("Failed to load form workspace");
             } finally {
@@ -167,6 +213,35 @@ const FormWorkspace = () => {
 
         fetchData();
     }, [documentId, formId]);
+
+    const handleClashResolved = async (excludedFilenames) => {
+        try {
+            setLoading(true);
+            setIsClashModalOpen(false);
+            
+            // Find the documents to exclude by filename in the clash report
+            const identities = clashReport.identities || [];
+            const allClashDocs = identities.flatMap(id => id.documents);
+            
+            // Call the exclude API for each document the user wanted to remove
+            const exclusionPromises = allClashDocs.map(doc => {
+                const shouldExclude = excludedFilenames.includes(doc.filename);
+                return API.put(`upload/document/exclude/${doc.id}`, { isExcluded: shouldExclude });
+            });
+            
+            await Promise.all(exclusionPromises);
+            
+            toast.success("Document exclusions updated. Re-mapping...");
+            
+            // Re-trigger the fetchData logic by reloading the page or manually calling the fetch
+            window.location.reload(); 
+        } catch (error) {
+            console.error("Error resolving clash:", error);
+            toast.error("Failed to update document exclusions");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleFieldChange = (index, value) => {
         if (typeof index !== 'number' && typeof index !== 'string') return;
@@ -307,6 +382,34 @@ const FormWorkspace = () => {
 
     const formSchema = form?.formSchema || [];
     const formImageUrl = form?._id ? `${API.defaults.baseURL}upload/file/${form._id}` : null;
+    const isPdf = form?.contentType === 'application/pdf' || form?.fileName?.toLowerCase().endsWith('.pdf');
+
+    const handleDragEnd = (index, info, imgHeight) => {
+        const dx = info.offset.x / zoom;
+        const dy = info.offset.y / zoom;
+
+        setMapping(prevMapping => {
+            const newMapping = [...prevMapping];
+            const item = newMapping[index];
+            const currentBox = item.target_box || item.coordinates;
+            if (!currentBox || currentBox.length < 4) return prevMapping;
+
+            // currentBox is in Docling coords: [left, top, right, bottom] where y-axis goes UP
+            // screen offset: x is right, y is down
+            // so dx increases left/right
+            // dy increases screen-y. In Docling, y=0 is bottom, so screen-down means Docling-y decreases.
+            newMapping[index] = {
+                ...item,
+                target_box: [
+                    currentBox[0] + dx,
+                    currentBox[1] - dy,
+                    currentBox[2] + dx,
+                    currentBox[3] - dy
+                ]
+            };
+            return newMapping;
+        });
+    };
 
     if (loading) {
         return (
@@ -320,6 +423,114 @@ const FormWorkspace = () => {
             </div>
         );
     }
+
+    const renderOverlays = (pageNumber = null) => {
+        return mapping.map((m, i) => {
+            // Filter by page if rendering inside a PDF Document
+            if (pageNumber !== null && (m.page_number || 1) !== pageNumber) return null;
+
+            const targetBox = m.target_box || m.coordinates; // The value box (possibly dragged)
+            
+            // Try to get the actual label bounding box (source_boxes)
+            let sourceBox = m.coordinates;
+            let usingRealSourceBox = false;
+            if (m.source_boxes && m.source_boxes.length > 0) {
+                if (Array.isArray(m.source_boxes[0])) {
+                    sourceBox = m.source_boxes[0];
+                    usingRealSourceBox = true;
+                } else if (m.source_boxes.length === 4 && typeof m.source_boxes[0] === 'number') {
+                    sourceBox = m.source_boxes;
+                    usingRealSourceBox = true;
+                }
+            }
+            
+            if (!sourceBox || !Array.isArray(sourceBox) || sourceBox.length < 4) return null;
+            
+            const cssSource = toCssBox(sourceBox, formImageSize.height);
+            const cssTarget = toCssBox(targetBox, formImageSize.height);
+            
+            const displayValue = formValues[i] ?? m.value ?? '';
+            const isCheckbox = (m.field_type || '').toLowerCase() === 'checkbox' || (m.field_type || '').toLowerCase() === 'radio';
+            const showValue = displayValue != null && displayValue !== '' && !isCheckbox;
+            const isActive = activeField === i;
+            
+            // Determine if the value has been manually moved away from its default label position
+            // We use value comparison instead of identity comparison because objects lose identity after API save/reload
+            const isMoved = targetBox && sourceBox && (
+                Math.abs(targetBox[0] - sourceBox[0]) > 0.5 || 
+                Math.abs(targetBox[1] - sourceBox[1]) > 0.5
+            );
+            
+            return (
+                <React.Fragment key={`map-${i}-${targetBox.join(',')}`}>
+                    {/* Filled value overlay (Draggable) */}
+                    {showValue && (
+                        <motion.div
+                            drag
+                            dragMomentum={false}
+                            onDragEnd={(e, info) => handleDragEnd(i, info, formImageSize.height)}
+                            className={`absolute z-40 px-2 py-1 text-[11px] font-medium transition-all shadow-sm rounded cursor-grab active:cursor-grabbing ${
+                                isActive 
+                                    ? 'text-white bg-asaan-royal border-2 border-asaan-royal shadow-glow' 
+                                    : 'text-asaan-royal bg-white border-2 border-asaan-sky hover:border-asaan-royal/50'
+                            }`}
+                            style={{
+                                // If not moved, position it to the right of the label (cssSource)
+                                // If moved, use the target coordinates directly
+                                left: isMoved ? cssTarget.left : cssSource.left + cssSource.width + 10,
+                                top: isMoved ? cssTarget.top : cssSource.top,
+                                maxWidth: 200,
+                                lineHeight: 1.3,
+                                minHeight: Math.max(cssTarget.height, 20),
+                                opacity: 1,
+                                boxSizing: 'border-box'
+                            }}
+                            onClick={() => setActiveField(i)}
+                            title={`Drag to reposition value for '${m.field_name}'`}
+                        >
+                            {String(displayValue).length > 30 ? String(displayValue).slice(0, 29) + '…' : displayValue}
+                        </motion.div>
+                    )}
+                    
+                    {/* Field Key (Label) Highlight - This is what the user wants to "tightly wrap" */}
+                    <div
+                        id={`overlay-label-${i}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setActiveField(i)}
+                        onKeyDown={(e) => e.key === 'Enter' && setActiveField(i)}
+                        className={`absolute cursor-pointer z-20 flex items-center transition-all duration-300 rounded-[2px] box-border ${
+                            isActive 
+                                ? 'border-2 border-asaan-royal bg-asaan-royal/10 shadow-[0_0_10px_rgba(37,99,235,0.4)]' 
+                                : 'border border-asaan-sky/30 bg-asaan-sky/5 hover:border-asaan-sky/60 hover:bg-asaan-sky/10'
+                        }`}
+                        style={{
+                            left: cssSource.left - 2, // Slight padding for "tight wrap" feel
+                            top: cssSource.top - 1,
+                            width: (usingRealSourceBox ? cssSource.width : Math.min(cssSource.width, Math.max(30, (m.field_name || '').length * (cssSource.height * 0.55) + 10))) + 4,
+                            height: cssSource.height + 2
+                        }}
+                    >
+                        {/* Tooltip on active */}
+                        <AnimatePresence>
+                            {isActive && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    className="absolute -top-10 left-0 bg-asaan-royal text-white text-[10px] px-3 py-1.5 rounded-xl font-bold shadow-large whitespace-nowrap z-50 flex items-center gap-2"
+                                >
+                                    <FileText className="w-3 h-3" />
+                                    {m.field_name}
+                                    <div className="absolute -bottom-1 left-4 w-2 h-2 bg-asaan-royal rotate-45" />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                </React.Fragment>
+            );
+        });
+    };
 
     return (
         <PageTransition>
@@ -382,85 +593,52 @@ const FormWorkspace = () => {
                     {/* Left: Original form image with clickable field overlays */}
                     <div className="flex-1 relative overflow-auto bg-white rounded-[2.5rem] p-16 flex justify-center items-start border border-border/50 shadow-soft custom-scrollbar" ref={containerRef}>
                         <motion.div
-                            className="relative shadow-2xl origin-top"
+                            className="relative shadow-2xl origin-top flex flex-col gap-4"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1, scale: zoom }}
                             transition={{ duration: 0.2 }}
                         >
-                            {formImageUrl && (
-                                <img
-                                    src={formImageUrl}
-                                    alt="Form"
-                                    className="max-w-none h-auto select-none rounded border border-border/10"
-                                    onLoad={(e) => {
-                                        const { naturalWidth, naturalHeight } = e.target;
-                                        setFormImageSize({ width: naturalWidth, height: naturalHeight });
-                                    }}
-                                />
-                            )}
-                            {mapping.map((m, i) => {
-                                const box = m.coordinates || m.target_box;
-                                if (!box || !Array.isArray(box) || box.length < 4) return null;
-                                const css = toCssBox(box, formImageSize.height);
-                                const { left, top, width, height } = css;
-                                const displayValue = formValues[i] ?? m.value ?? '';
-                                const isCheckbox = (m.field_type || '').toLowerCase() === 'checkbox' || (m.field_type || '').toLowerCase() === 'radio';
-                                const showValue = displayValue != null && displayValue !== '' && !isCheckbox;
-                                return (
-                                    <React.Fragment key={`map-${i}`}>
-                                        {/* Filled value overlay beside field (padding so form field stays visible) */}
-                                        {showValue && (
-                                            <div
-                                                className="absolute z-10 px-2 py-1 text-[11px] font-medium text-asaan-royal bg-white/95 border border-asaan-sky/20 rounded shadow-sm overflow-hidden pointer-events-none"
-                                                style={{
-                                                    left: left + width + 8,
-                                                    top,
-                                                    maxWidth: 180,
-                                                    lineHeight: 1.3,
-                                                    minHeight: Math.max(height, 18)
+                            {formImageUrl && isPdf ? (
+                                <Document
+                                    file={formImageUrl}
+                                    onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+                                    className="flex flex-col gap-4"
+                                >
+                                    {Array.from(new Array(numPages || 0), (el, index) => (
+                                        <div key={`page_${index + 1}`} className="relative border border-border/10 rounded">
+                                            <Page 
+                                                pageNumber={index + 1} 
+                                                renderTextLayer={false}
+                                                renderAnnotationLayer={false}
+                                                onLoadSuccess={(page) => {
+                                                    if (index === 0) {
+                                                        // Fallback height for coordinates scaling if needed
+                                                        setFormImageSize({ width: page.originalWidth, height: page.originalHeight });
+                                                    }
                                                 }}
-                                                title={String(displayValue)}
-                                            >
-                                                {String(displayValue).length > 25 ? String(displayValue).slice(0, 24) + '…' : displayValue}
-                                            </div>
-                                        )}
-                                        {/* Clickable highlight area */}
-                                        <motion.div
-                                            role="button"
-                                            tabIndex={0}
-                                            onClick={() => setActiveField(i)}
-                                            onKeyDown={(e) => e.key === 'Enter' && setActiveField(i)}
-                                            className={`absolute border-2 rounded-md transition-all cursor-pointer ${activeField === i
-                                                ? 'border-asaan-royal bg-asaan-royal/10 ring-8 ring-asaan-royal/5 z-30 shadow-glow'
-                                                : 'border-transparent z-20 hover:border-asaan-sky/40 hover:bg-asaan-sky/5'
-                                                }`}
-                                            style={{
-                                                left,
-                                                top,
-                                                width,
-                                                height
+                                            />
+                                            {/* Render overlays for this specific PDF page */}
+                                            {renderOverlays(index + 1)}
+                                        </div>
+                                    ))}
+                                </Document>
+                            ) : (
+                                formImageUrl && (
+                                    <>
+                                        <img
+                                            src={formImageUrl}
+                                            alt="Form"
+                                            className="max-w-none h-auto select-none rounded border border-border/10"
+                                            onLoad={(e) => {
+                                                const { naturalWidth, naturalHeight } = e.target;
+                                                setFormImageSize({ width: naturalWidth, height: naturalHeight });
                                             }}
-                                            onMouseEnter={() => setActiveField(prev => prev === null ? i : prev)}
-                                            onMouseLeave={() => { }}
-                                        >
-                                            <AnimatePresence>
-                                                {activeField === i && (
-                                                    <motion.div
-                                                        initial={{ opacity: 0, y: 10 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        exit={{ opacity: 0 }}
-                                                        className="absolute -top-10 left-1/2 -translate-x-1/2 bg-asaan-royal text-white text-[11px] px-3 py-1 rounded-full font-bold shadow-large whitespace-nowrap z-50 flex items-center gap-2"
-                                                    >
-                                                        <CheckCircle className="w-3 h-3" />
-                                                        {displayValue !== '' ? displayValue : 'No Data'}
-                                                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-asaan-royal rotate-45" />
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </motion.div>
-                                    </React.Fragment>
-                                );
-                            })}
+                                        />
+                                        {/* Render all overlays for the image */}
+                                        {renderOverlays(null)}
+                                    </>
+                                )
+                            )}
                         </motion.div>
                     </div>
 
@@ -492,6 +670,7 @@ const FormWorkspace = () => {
                                     return (
                                         <motion.div
                                             key={index}
+                                            id={`field-container-${index}`}
                                             onClick={() => setActiveField(index)}
                                             className={`p-5 rounded-[2rem] border transition-all duration-300 cursor-pointer ${activeField === index
                                                 ? 'border-asaan-royal bg-white shadow-medium ring-1 ring-asaan-royal/10 translate-x-1'
@@ -591,6 +770,13 @@ const FormWorkspace = () => {
                         background-clip: content-box;
                     }
                 ` }} />
+
+                <DocumentClashModal 
+                    isOpen={isClashModalOpen}
+                    onClose={() => setIsClashModalOpen(false)}
+                    clashReport={clashReport}
+                    onResolved={handleClashResolved}
+                />
             </div>
         </PageTransition>
     );

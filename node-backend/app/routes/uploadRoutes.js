@@ -19,9 +19,12 @@ router.get("/form/:formId/document/:documentId/filled-pdf", uploadController.get
 router.get("/form/:formId/document/:documentId/fill-data", uploadController.getFillData);
 router.post("/document/map", upload.single("file"), uploadController.uploadAndMapDocument);
 router.put("/document/mapping/:id", uploadController.updateMapping);
+router.put("/document/exclude/:id", uploadController.toggleDocumentExclusion);
 
 // Dashboard lists
 router.get("/forms/user/:userId", uploadController.listUserForms);
 router.get("/documents/user/:userId", uploadController.listUserDocuments);
+router.delete("/form/:id", uploadController.deleteForm);
+router.delete("/document/:id", uploadController.deleteDocument);
 
 module.exports = router;

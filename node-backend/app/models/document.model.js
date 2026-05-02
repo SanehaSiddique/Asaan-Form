@@ -40,6 +40,10 @@ const documentSchema = new mongoose.Schema({
         type: Array, // Array of { field, value, source_boxes: [{page, box, text}] }
         default: []
     },
+    isExcluded: {
+        type: Boolean,
+        default: false
+    },
     createdAt: {
         type: Date,
         default: Date.now

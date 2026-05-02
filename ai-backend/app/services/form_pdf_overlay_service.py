@@ -270,6 +270,7 @@ class FormPdfOverlayService:
             field_type = (field.get("field_type") or "text_input").strip().lower()
             page_no = field.get("page_number", 1)
             coords = field.get("coordinates")
+            target_box = field.get("target_box")
             options = field.get("options") or []
             field_key = (field.get("field_key") or "").strip().lower()
 
@@ -346,13 +347,22 @@ class FormPdfOverlayService:
                 continue
 
             left, top, right, bottom = _to_pdf_coords(coords, page_height_px, scale)
-            value_left, value_top, value_right, value_bottom = _label_bbox_to_value_bbox(
-                left, top, right, bottom, page_width=pdf_rect.width
-            )
-            value_rect = _make_finite_rect(
-                value_left, value_top, value_right, value_bottom,
-                min_w=VALUE_BOX_WIDTH, min_h=14,
-            )
+            
+            # If the user explicitly dragged and saved a target_box, use that directly
+            if target_box and len(target_box) >= 4 and target_box != coords:
+                tb_l, tb_t, tb_r, tb_b = _to_pdf_coords(target_box, page_height_px, scale)
+                value_rect = _make_finite_rect(
+                    tb_l, tb_t, tb_r, tb_b,
+                    min_w=VALUE_BOX_WIDTH, min_h=14,
+                )
+            else:
+                value_left, value_top, value_right, value_bottom = _label_bbox_to_value_bbox(
+                    left, top, right, bottom, page_width=pdf_rect.width
+                )
+                value_rect = _make_finite_rect(
+                    value_left, value_top, value_right, value_bottom,
+                    min_w=VALUE_BOX_WIDTH, min_h=14,
+                )
 
             text = _safe_text(value)
             if not text:

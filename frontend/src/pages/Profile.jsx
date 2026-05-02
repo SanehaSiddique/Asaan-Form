@@ -3,11 +3,11 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { User, Mail, Calendar, FileText, Download, Eye, Edit, Upload, Clock, CheckCircle } from 'lucide-react';
+import { User, Mail, Calendar, FileText, Download, Eye, Edit, Upload, Clock, CheckCircle, Trash2 } from 'lucide-react';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import PageTransition from '@/components/PageTransition';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import API from '../../axiosInstance';
 
 const Profile = () => {
@@ -15,17 +15,10 @@ const Profile = () => {
   const { user } = useSelector((state) => state.auth);
   const navigate = useNavigate();
 
-  const [formHistory, setFormHistory] = useState([]);
   const [filledFormsHistory, setFilledFormsHistory] = useState([]);
   const [uploadedDocuments, setUploadedDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  const handleAction = (action, formName) => {
-    toast({
-      title: `${action} Form`,
-      description: `${action}ing "${formName}"...`,
-    });
-  };
+  const [previewDoc, setPreviewDoc] = useState(null);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -37,76 +30,95 @@ const Profile = () => {
     visible: { opacity: 1, y: 0 },
   };
 
+  const fetchData = async () => {
+    if (!user) return;
+    const userId = user.id ?? user._id;
+    if (!userId) return;
+    try {
+      setLoading(true);
+      const docsRes = await API.get(`upload/documents/user/${userId}`);
+      const documents = docsRes.data?.documents || [];
+
+      // 1. My Filled Forms (Documents associated with a form template)
+      const filledForms = documents.filter(d => d.formId != null);
+      
+      setFilledFormsHistory(
+        filledForms.map((d) => {
+          // Use the populated formName from the form template if available
+          const formName = d.formId?.formName || d.formId?.fileName || d.documentType || 'Filled Form';
+          return {
+            id: d._id,
+            formId: d.formId?._id || d.formId,
+            name: formName,
+            uploadedAt: d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '',
+            status: d.semanticMapping?.length ? 'filled' : 'processing',
+            format: (d.contentType || '').toUpperCase().includes('PDF') ? 'PDF' : 'IMAGE',
+          };
+        })
+      );
+
+      // 2. Uploaded Documents (Deduplicate by name to keep list clean)
+      const uniqueDocs = [];
+      const seenNames = new Set();
+      documents.forEach((d) => {
+        const name = d.fileName || d.documentType || 'Document';
+        if (!seenNames.has(name)) {
+          seenNames.add(name);
+          uniqueDocs.push({
+            id: d._id,
+            name: name,
+            size: d.fileSize ? `${(d.fileSize / (1024 * 1024)).toFixed(1)} MB` : '0.5 MB',
+            uploadedAt: d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '',
+          });
+        }
+      });
+
+      setUploadedDocuments(uniqueDocs);
+    } catch (error) {
+      console.error('Profile data fetch error:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
-      const userId = user.id ?? user._id;
-      if (!userId) return;
-      try {
-        setLoading(true);
-        const [formsRes, docsRes] = await Promise.all([
-          API.get(`upload/forms/user/${userId}`),
-          API.get(`upload/documents/user/${userId}`)
-        ]);
-
-        const forms = formsRes.data?.forms || [];
-        const docs = docsRes.data?.documents || [];
-
-        setFormHistory(
-          forms.map((f) => ({
-            id: f._id,
-            name: f.formName || f.fileName || 'Form',
-            uploadedAt: f.createdAt ? new Date(f.createdAt).toLocaleDateString() : '',
-            status: f.formSchema?.length ? 'completed' : 'draft',
-            format: (f.contentType || '').toUpperCase().includes('PDF') ? 'PDF' : 'DOC',
-          }))
-        );
-
-        // Filter populated filled forms verses unpopulated context documents
-        const filledForms = docs.filter(d => d.formId != null);
-        const contextDocs = docs.filter(d => d.formId == null);
-
-        setFilledFormsHistory(
-          filledForms.map((d) => {
-            const formName = typeof d.formId === 'object' ? d.formId.formName : null;
-            return {
-              id: d._id,
-              formId: typeof d.formId === 'object' ? d.formId._id : d.formId,
-              name: formName || d.documentType || 'Filled Form',
-              uploadedAt: d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '',
-              status: d.semanticMapping?.length ? 'filled' : 'processing',
-              format: (d.contentType || '').toUpperCase().includes('PDF') ? 'PDF' : 'IMAGE',
-            };
-          })
-        );
-
-        // Deduplicate stored identity documents using a strict filename/name set
-        const uniqueDocs = [];
-        const seenNames = new Set();
-        contextDocs.forEach((d) => {
-          const name = d.fileName || d.documentType || 'Document';
-          if (!seenNames.has(name)) {
-            seenNames.add(name);
-            uniqueDocs.push({
-              id: d._id,
-              name: name,
-              size: d.fileSize ? `${(d.fileSize / (1024 * 1024)).toFixed(1)} MB` : '',
-              uploadedAt: d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '',
-            });
-          }
-        });
-
-        setUploadedDocuments(uniqueDocs);
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('Profile data fetch error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, [user]);
+
+  const handleDeleteDocument = async (id, name, isForm = false) => {
+    if (!window.confirm(`Are you sure you want to delete ${isForm ? 'this filled form' : 'this document'}?`)) return;
+    
+    try {
+      await API.delete(`upload/document/${id}`);
+      toast.success(`${name} deleted successfully`);
+      fetchData(); // Refresh list
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error("Failed to delete item");
+    }
+  };
+
+  const handleDownloadFilled = async (formId, documentId, name) => {
+    try {
+      toast.info(`Preparing download for ${name}...`);
+      const response = await API.get(
+        `upload/form/${formId}/document/${documentId}/filled-pdf`,
+        { responseType: 'blob' }
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `filled_${name.replace(/\s+/g, '_')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Download started");
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Failed to generate filled PDF");
+    }
+  };
 
   // Format join date
   const joinDate = user?.createdAt 
@@ -171,7 +183,7 @@ const Profile = () => {
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Form History */}
+            {/* Filled Forms History */}
             <div className="lg:col-span-2">
               <motion.div 
                 initial={{ opacity: 0, y: 20 }} 
@@ -179,7 +191,7 @@ const Profile = () => {
                 transition={{ delay: 0.3 }}
               >
                 <h2 className="font-display text-xl font-semibold mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-asaan-royal" /> Uploaded Templates
+                  <CheckCircle className="w-5 h-5 text-asaan-royal" /> My Filled Forms
                 </h2>
 
                 <motion.div 
@@ -188,149 +200,80 @@ const Profile = () => {
                   animate="visible" 
                   className="space-y-4"
                 >
-                  {(loading && formHistory.length === 0) && (
+                  {loading && filledFormsHistory.length === 0 && (
                     <p className="text-sm text-muted-foreground px-2 py-4">Loading your forms...</p>
                   )}
-                  {!loading && formHistory.length === 0 && (
-                    <p className="text-sm text-muted-foreground px-2 py-4">No forms yet. Start by uploading a new form.</p>
-                  )}
-                  {formHistory.map((form) => (
-                    <motion.div key={form.id} variants={itemVariants}>
-                      <Card variant="glass" className="p-4">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-asaan-sky/20 flex items-center justify-center flex-shrink-0">
-                              <FileText className="w-5 h-5 md:w-6 md:h-6 text-asaan-royal" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-medium truncate">{form.name}</h3>
-                              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-1">
-                                <span className="flex items-center gap-1 whitespace-nowrap">
-                                  <Clock className="w-3 h-3 flex-shrink-0" /> {form.uploadedAt}
-                                </span>
-                                <span
-                                  className={`px-2 py-0.5 rounded-full text-xs whitespace-nowrap ${
-                                    form.status === 'completed'
-                                      ? 'bg-green-500/20 text-green-600'
-                                      : 'bg-yellow-500/20 text-yellow-600'
-                                  }`}
-                                >
-                                  {form.status}
-                                </span>
-                                <span className="text-xs bg-secondary px-2 py-0.5 rounded whitespace-nowrap">
-                                  {form.format}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 self-end sm:self-auto">
-                            <motion.button
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() => handleAction('View', form.name)}
-                              className="p-2 rounded-lg hover:bg-secondary transition-colors"
-                              title="View"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </motion.button>
-                            <motion.button
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() => handleAction('Edit', form.name)}
-                              className="p-2 rounded-lg hover:bg-secondary transition-colors"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </motion.button>
-                            <motion.button
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() => handleAction('Download', form.name)}
-                              className="p-2 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
-                              title="Download"
-                            >
-                              <Download className="w-4 h-4" />
-                            </motion.button>
-                          </div>
-                        </div>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </motion.div>
-
-              {/* Filled Forms History */}
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                transition={{ delay: 0.35 }}
-                className="mt-8"
-              >
-                <h2 className="font-display text-xl font-semibold mb-4 flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-asaan-sky" /> Filled Forms
-                </h2>
-
-                <motion.div 
-                  variants={containerVariants} 
-                  initial="hidden" 
-                  animate="visible" 
-                  className="space-y-4"
-                >
-                  {(loading && filledFormsHistory.length === 0) && (
-                    <p className="text-sm text-muted-foreground px-2 py-4">Loading your filled forms...</p>
-                  )}
                   {!loading && filledFormsHistory.length === 0 && (
-                    <p className="text-sm text-muted-foreground px-2 py-4">No filled forms yet.</p>
+                    <div className="p-12 text-center border-2 border-dashed border-asaan-sky/20 rounded-[2rem] bg-white/50 backdrop-blur-sm">
+                      <FileText className="w-12 h-12 text-asaan-sky/30 mx-auto mb-4" />
+                      <p className="text-muted-foreground font-medium">No filled forms yet.</p>
+                      <Button 
+                        variant="link" 
+                        onClick={() => navigate('/upload-form')}
+                        className="mt-2 text-asaan-royal"
+                      >
+                        Start your first form
+                      </Button>
+                    </div>
                   )}
                   {filledFormsHistory.map((form) => (
                     <motion.div key={form.id} variants={itemVariants}>
-                      <Card variant="glass" className="p-4">
+                      <Card variant="glass" className="p-4 hover:shadow-glow-sm transition-all border-asaan-sky/10">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                           <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-asaan-sky/20 flex items-center justify-center flex-shrink-0">
-                              <FileText className="w-5 h-5 md:w-6 md:h-6 text-asaan-sky" />
+                            <div className="w-12 h-12 rounded-2xl bg-asaan-sky/20 flex items-center justify-center flex-shrink-0">
+                              <FileText className="w-6 h-6 text-asaan-royal" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <h3 className="font-medium truncate">{form.name}</h3>
+                              <h3 className="font-bold text-asaan-royal truncate">{form.name}</h3>
                               <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-1">
-                                <span className="flex items-center gap-1 whitespace-nowrap">
+                                <span className="flex items-center gap-1 whitespace-nowrap bg-white/50 px-2 py-0.5 rounded-lg border border-asaan-sky/10">
                                   <Clock className="w-3 h-3 flex-shrink-0" /> {form.uploadedAt}
                                 </span>
                                 <span
-                                  className={`px-2 py-0.5 rounded-full text-xs whitespace-nowrap ${
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                     form.status === 'filled'
-                                      ? 'bg-green-500/20 text-green-600'
-                                      : 'bg-yellow-500/20 text-yellow-600'
+                                      ? 'bg-green-100 text-green-600'
+                                      : 'bg-yellow-100 text-yellow-600'
                                   }`}
                                 >
                                   {form.status}
                                 </span>
-                                <span className="text-xs bg-secondary px-2 py-0.5 rounded whitespace-nowrap">
+                                <span className="text-[10px] font-bold bg-secondary/50 px-2 py-0.5 rounded uppercase">
                                   {form.format}
                                 </span>
                               </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 self-end sm:self-auto">
+                          <div className="flex items-center gap-2 self-end sm:self-auto bg-white/30 p-1 rounded-xl border border-asaan-sky/5">
                             <motion.button
-                              whileHover={{ scale: 1.1 }}
+                              whileHover={{ scale: 1.1, backgroundColor: 'rgba(52, 152, 219, 0.1)' }}
                               whileTap={{ scale: 0.9 }}
                               onClick={() => navigate(`/form-workspace/${form.formId}/${form.id}`)}
-                              className="p-2 rounded-lg hover:bg-secondary transition-colors"
-                              title="Resume / View Workspace"
+                              className="p-2.5 rounded-xl text-asaan-royal transition-colors"
+                              title="Edit / View Workspace"
                             >
                               <Edit className="w-4 h-4" />
                             </motion.button>
                             <motion.button
-                              whileHover={{ scale: 1.1 }}
+                              whileHover={{ scale: 1.1, backgroundColor: 'rgba(52, 152, 219, 0.1)' }}
                               whileTap={{ scale: 0.9 }}
-                              onClick={() => window.open(`http://localhost:3000/api/upload/filled-pdf/${form.formId}/${form.id}`, '_blank')}
-                              className="p-2 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
-                              title="Download Filled Export"
+                              onClick={() => handleDownloadFilled(form.formId, form.id, form.name)}
+                              className="p-2.5 rounded-xl text-asaan-royal transition-colors"
+                              title="Download Filled PDF"
                             >
                               <Download className="w-4 h-4" />
+                            </motion.button>
+                            <div className="w-px h-4 bg-asaan-sky/10 mx-1" />
+                            <motion.button
+                              whileHover={{ scale: 1.1, backgroundColor: 'rgba(231, 76, 60, 0.1)', color: '#e74c3c' }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => handleDeleteDocument(form.id, form.name, true)}
+                              className="p-2.5 rounded-xl text-muted-foreground transition-colors"
+                              title="Delete Form Instance"
+                            >
+                              <Trash2 className="w-4 h-4" />
                             </motion.button>
                           </div>
                         </div>
@@ -352,61 +295,77 @@ const Profile = () => {
                   <User className="w-5 h-5 text-asaan-royal" /> Uploaded Documents
                 </h2>
 
-                <Card variant="glass" className="p-4">
+                <Card variant="glass" className="p-4 border-asaan-sky/10">
                   <div className="space-y-3">
-                    {(loading && uploadedDocuments.length === 0) && (
+                    {loading && uploadedDocuments.length === 0 && (
                       <p className="text-sm text-muted-foreground">Loading your documents...</p>
                     )}
                     {!loading && uploadedDocuments.length === 0 && (
-                      <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
+                      <p className="text-sm text-muted-foreground py-4 text-center">No documents uploaded yet.</p>
                     )}
                     {uploadedDocuments.map((doc, index) => (
                       <motion.div
-                        key={doc.name}
+                        key={doc.id}
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.5 + index * 0.1 }}
-                        className="flex items-center justify-between p-3 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
+                        className="flex items-center justify-between p-3 rounded-2xl bg-white/40 border border-white/60 hover:bg-white/60 transition-all group shadow-sm hover:shadow-md"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-asaan-sky/20 flex items-center justify-center flex-shrink-0">
-                            <FileText className="w-4 h-4 text-asaan-royal" />
+                          <div className="w-10 h-10 rounded-xl bg-asaan-sky/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                            <FileText className="w-5 h-5 text-asaan-royal" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{doc.name}</p>
-                            <p className="text-xs text-muted-foreground">{doc.size}</p>
+                            <p className="text-sm font-bold text-asaan-royal truncate">{doc.name}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[10px] text-muted-foreground">{doc.size}</span>
+                              <span className="text-[10px] text-muted-foreground/50">•</span>
+                            </div>
                           </div>
                         </div>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
-                          {doc.uploadedAt}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <motion.button
+                              whileHover={{ scale: 1.1, backgroundColor: 'rgba(52, 152, 219, 0.1)' }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => setPreviewDoc(doc)}
+                              className="p-2 rounded-lg text-asaan-royal transition-colors"
+                              title="Preview Document"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.1, backgroundColor: 'rgba(231, 76, 60, 0.1)', color: '#e74c3c' }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleDeleteDocument(doc.id, doc.name, false)}
+                            className="p-2 rounded-lg text-muted-foreground transition-colors"
+                            title="Delete Document"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </motion.button>
+                        </div>
                       </motion.div>
                     ))}
                   </div>
                 </Card>
               </motion.div>
 
-            {/* Quick Stats */}
+              {/* Quick Stats */}
               <motion.div 
                 initial={{ opacity: 0, y: 20 }} 
                 animate={{ opacity: 1, y: 0 }} 
                 transition={{ delay: 0.6 }} 
                 className="mt-6"
               >
-                <Card variant="gradient" glow className="p-6">
-                  <h3 className="font-display font-semibold mb-4">Quick Stats</h3>
+                <Card className="p-6 bg-gradient-to-br from-asaan-royal to-asaan-sky text-white border-none shadow-glow-sm">
+                  <h3 className="font-display font-semibold mb-4 text-white/90 uppercase tracking-widest text-xs">Quick Stats</h3>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Forms Filled</span>
-                      <span className="font-bold text-lg gradient-text">{filledFormsHistory.length}</span>
+                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                      <span className="text-white/70 text-sm">Forms Filled</span>
+                      <span className="font-bold text-2xl">{filledFormsHistory.length}</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Unique Documents</span>
-                      <span className="font-bold text-lg gradient-text">{uploadedDocuments.length}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Templates Added</span>
-                      <span className="font-bold text-lg gradient-text">{formHistory.length}</span>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-white/70 text-sm">Unique Documents</span>
+                      <span className="font-bold text-2xl">{uploadedDocuments.length}</span>
                     </div>
                   </div>
                 </Card>
@@ -415,6 +374,70 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {/* Document Preview Modal */}
+      {previewDoc && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            onClick={() => setPreviewDoc(null)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            className="relative w-full max-w-4xl bg-white rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+          >
+            {/* Modal Header */}
+            <div className="p-6 border-b flex items-center justify-between bg-white">
+              <div>
+                <h3 className="font-display font-bold text-xl text-asaan-royal">{previewDoc.name}</h3>
+                <p className="text-xs text-muted-foreground">{previewDoc.size} • Uploaded on {previewDoc.uploadedAt}</p>
+              </div>
+              <button 
+                onClick={() => setPreviewDoc(null)}
+                className="p-2 hover:bg-secondary rounded-full transition-colors"
+              >
+                <span className="sr-only">Close</span>
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-auto p-4 bg-secondary/30 flex items-center justify-center min-h-[400px]">
+              {previewDoc.name.toLowerCase().endsWith('.pdf') ? (
+                <iframe 
+                  src={`${API.defaults.baseURL.replace(/\/$/, '')}/upload/file/${previewDoc.id}#toolbar=0`}
+                  className="w-full h-full border-none rounded-xl bg-white shadow-sm"
+                  title={previewDoc.name}
+                  style={{ minHeight: '60vh' }}
+                />
+              ) : (
+                <img 
+                  src={`${API.defaults.baseURL.replace(/\/$/, '')}/upload/file/${previewDoc.id}`}
+                  alt={previewDoc.name}
+                  className="max-w-full h-auto rounded-xl shadow-lg border"
+                />
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t bg-white flex justify-end gap-3">
+              <Button variant="secondary" onClick={() => setPreviewDoc(null)}>Close</Button>
+              <Button 
+                onClick={() => window.open(`${API.defaults.baseURL.replace(/\/$/, '')}/upload/file/${previewDoc.id}`, '_blank')}
+                icon={<Download className="w-4 h-4" />}
+              >
+                Download Original
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </PageTransition>
   );
 };

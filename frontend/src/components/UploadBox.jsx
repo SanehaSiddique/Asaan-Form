@@ -45,9 +45,12 @@ const UploadBox = ({
 
       setFiles((prev) => {
         const updated = multiple ? [...prev, ...newFiles] : newFiles;
-        onFilesChange?.(updated);
         return updated;
       });
+      
+      // Trigger callback after state update is initiated
+      const updated = multiple ? [...files, ...newFiles] : newFiles;
+      onFilesChange?.(updated);
 
       // Simulate upload progress
       newFiles.forEach((file) => {
@@ -97,9 +100,10 @@ const UploadBox = ({
   const removeFile = (id) => {
     setFiles((prev) => {
       const updated = prev.filter((f) => f.id !== id);
-      onFilesChange?.(updated);
       return updated;
     });
+    const updated = files.filter((f) => f.id !== id);
+    onFilesChange?.(updated);
   };
 
   const formatSize = (bytes) => {

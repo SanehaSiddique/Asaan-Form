@@ -11,6 +11,7 @@ from app.services.document_processing_service import document_processing_service
 from app.services.form_filling_service import form_filling_service
 from app.services.form_pdf_overlay_service import form_pdf_overlay_service
 from app.services.form_processing_service import form_processing_service
+from app.services.identity_verification_service import identity_verification_service
 from app.graph.master_graph import master_graph
 from app.schemas.state import AgentState
 
@@ -86,11 +87,30 @@ async def map_existing_document_endpoint(
             "chatbot_initial_prompt": graph_result.get("results", {}).get("chatbot", {})
         }
         return JSONResponse(content=result)
-    except HTTPException:
-        raise
     except Exception as e:
         import traceback
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/validate-identities")
+async def validate_identities_endpoint(
+    user_id: str = Form(...),
+    document_filenames: str = Form(...)
+):
+    """
+    Check if the provided documents belong to different people.
+    Returns a clash report if mismatches are found.
+    """
+    filenames = [x.strip() for x in document_filenames.split(",") if x.strip()]
+    if not filenames:
+        raise HTTPException(status_code=400, detail="No document filenames provided")
+        
+    try:
+        report = await identity_verification_service.verify_identities(user_id, filenames)
+        return JSONResponse(content=report)
+    except Exception as e:
+        print(f"Error in validate-identities: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
