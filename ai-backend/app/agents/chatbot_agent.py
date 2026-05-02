@@ -3,6 +3,7 @@ from app.utils.llm import get_llm
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 import asyncio
 import json
+import re
 
 def _build_system_prompt(missing_fields: list, document_context: dict = None, validation_feedback: str = None) -> str:
     base = (
@@ -59,14 +60,38 @@ def _build_system_prompt(missing_fields: list, document_context: dict = None, va
         )
         base += f"\nMISSING_FIELDS:{field_list}\n"
         base += "\nPlease gently ask the user for these missing values if they haven't provided them yet. 😊\n"
-    
+
+    # Also list filled fields so the LLM knows their exact keys for updates/corrections
+    if document_context and document_context.get('filled_fields'):
+        filled_list = "|".join(
+            f"{f.get('field', '?')}(key:{f.get('field_key', '?')})"
+            for f in document_context['filled_fields']
+            if f.get('field_key')
+        )
+        if filled_list:
+            base += f"\nFILLED_FIELDS (use these keys if user wants to correct/clear an already-filled value):{filled_list}\n"
+
     return base
 
-def _extract_field_updates(answer: str, missing_fields: list) -> list:
+
+
+def _normalize_key(text: str) -> str:
+    """Normalize a string to a comparable form: lowercase, strip, replace spaces/special chars with underscores."""
+    text = text.strip().lower()
+    # Remove apostrophes and other punctuation, replace spaces/hyphens with underscores
+    text = re.sub(r"[''`]", "", text)
+    text = re.sub(r"[\s\-]+", "_", text)
+    text = re.sub(r"[^a-z0-9_]", "", text)
+    # Collapse multiple underscores
+    text = re.sub(r"_+", "_", text).strip("_")
+    return text
+
+def _extract_field_updates(answer: str, missing_fields: list, document_context: dict = None) -> list:
     """
     Extract all FIELD_UPDATE blocks from LLM response. 
     Returns list of dicts: [{'field_key': '...', 'value': '...'}]
     Now more robust to common LLM formatting variations.
+    Handles the case where the LLM uses human-readable field names instead of snake_case DB keys.
     """
     marker = "FIELD_UPDATE:"
     updates = []
@@ -74,10 +99,43 @@ def _extract_field_updates(answer: str, missing_fields: list) -> list:
     
     # Pre-calculate valid keys for faster lookup
     valid_keys = set()
+    # Build a normalization map: normalized_variant -> canonical_field_key
+    # This lets us match "Applicant's Annual Income" -> "applicants_annual_income"
+    norm_map = {}
     for f in (missing_fields or []):
-        if 'field_key' in f:
-            valid_keys.add(f['field_key'])
-            
+        fk = f.get('field_key')
+        if fk:
+            valid_keys.add(fk)
+            # Map the canonical key itself
+            norm_map[_normalize_key(fk)] = fk
+            # Map the human-readable field_name if present
+            fn = f.get('field_name')
+            if fn:
+                norm_map[_normalize_key(fn)] = fk
+
+    # Also include filled fields from document_context so we can update already-filled values
+    if document_context and document_context.get('filled_fields'):
+        for f in document_context['filled_fields']:
+            fk = f.get('field_key')
+            if fk:
+                valid_keys.add(fk)
+                norm_map[_normalize_key(fk)] = fk
+                fn = f.get('field')
+                if fn:
+                    norm_map[_normalize_key(fn)] = fk
+
+    def _resolve_key(raw_key: str) -> str | None:
+        """Try to resolve a raw key to a valid canonical field_key."""
+        raw_key = str(raw_key)
+        # Direct match
+        if raw_key in valid_keys:
+            return raw_key
+        # Normalized match
+        normalized = _normalize_key(raw_key)
+        if normalized in norm_map:
+            return norm_map[normalized]
+        return None
+
     for line in lines:
         line = line.strip()
         if marker in line:  # Be more flexible than startswith
@@ -94,32 +152,36 @@ def _extract_field_updates(answer: str, missing_fields: list) -> list:
                 
                 # Case 1: Standard format {"field_key": "...", "value": "..."}
                 if "field_key" in update_raw and "value" in update_raw:
-                    processed_update = {
-                        "field_key": str(update_raw["field_key"]),
-                        "value": str(update_raw["value"])
-                    }
+                    resolved = _resolve_key(update_raw["field_key"])
+                    if resolved:
+                        processed_update = {
+                            "field_key": resolved,
+                            "value": str(update_raw["value"])
+                        }
+                    else:
+                        print(f"  ⚠️ Rejected update with unknown key: {update_raw['field_key']}")
                 
                 # Case 2: Robust Fallback (handles LLM hallucinations like {"key_name": "...", "value": "..."})
                 # If "field_key" is missing, look for ANY key that matches a known field key
                 elif "value" in update_raw:
                     for key, val in update_raw.items():
                         if key == "value": continue
-                        # If the key itself is a valid candidate
-                        if key in valid_keys:
-                            processed_update = {"field_key": key, "value": str(update_raw["value"])}
+                        # If the key itself resolves to a valid candidate
+                        resolved = _resolve_key(key)
+                        if resolved:
+                            processed_update = {"field_key": resolved, "value": str(update_raw["value"])}
                             break
-                        # If the value of this key is a valid candidate (LLM did {"field": "key_here", "value": "..."})
-                        if str(val) in valid_keys:
-                            processed_update = {"field_key": str(val), "value": str(update_raw["value"])}
+                        # If the value of this key resolves (LLM did {"field": "key_here", "value": "..."})
+                        resolved = _resolve_key(str(val))
+                        if resolved:
+                            processed_update = {"field_key": resolved, "value": str(update_raw["value"])}
                             break
 
                 if processed_update:
-                    # Final sanity check: key MUST be in our valid set to prevent hallucinations
-                    if processed_update["field_key"] in valid_keys:
-                        updates.append(processed_update)
-                    else:
-                        print(f"  ⚠️ Rejected update with unknown key: {processed_update['field_key']}")
-                else:
+                    updates.append(processed_update)
+                    print(f"  ✅ Resolved field update: {processed_update['field_key']} = {processed_update['value']}")
+                elif not processed_update and "field_key" not in update_raw:
+                    # Only print this if we haven't already printed a rejection above
                     print(f"  ⚠️ Failed to extract valid field/value from: {json_str}")
                     
             except Exception as e:
@@ -162,7 +224,7 @@ async def chatbot_agent(state: AgentState) -> AgentState:
         
         print(f"  🤖 LLM Raw Response:\n---\n{response}\n---")
         
-        field_updates = _extract_field_updates(response, missing_fields)  # list, may be empty
+        field_updates = _extract_field_updates(response, missing_fields, document_context)  # list, may be empty
         if field_updates:
             print(f"  ✅ Extracted {len(field_updates)} field updates: {field_updates}")
         else:

@@ -1,135 +1,108 @@
-# 📄 Asaan-Form: AI-Driven Form Automation
+# 📄 ASAAN FORM: Your Intelligent AI-Powered Form Ecosystem
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Stack: MERN + FastAPI + AI](https://img.shields.io/badge/Stack-MERN_%2B_FastAPI_%2B_AI-green.svg)](#)
-[![Python: 3.10+](https://img.shields.io/badge/Python-3.10%2B-yellow.svg)](#)
-[![Node: 18+](https://img.shields.io/badge/Node-18%2B-yellow.svg)](#)
+[![Product Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)](#)
+[![Stack: MERN + Agentic AI](https://img.shields.io/badge/Stack-MERN_%2B_Agentic_AI-green.svg)](#)
+[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
 
-**Asaan-Form** is an end-to-end intelligent document ecosystem designed to simplify complex administrative tasks. It leverages **Agentic AI Orchestration** to transform unstructured documents (CNICs, transcripts, applications) into structured data, guiding users through it with a sympathetic multilingual chatbot.
-
----
-
-## 🌟 Core System Features
-
-### 🤖 Intelligent Agent Orchestration
-Powered by **LangGraph**, the system employs specialized AI agents that collaborate to ensure accuracy:
-- **Intent Agent**: Detects user needs and handles document routing.
-- **Mapping Agent**: Performs semantic mapping of extracted text to form fields.
-- **Validator Agent**: Detects hallucinations or data mismatches, triggering a self-healing retry loop.
-- **Chatbot Agent**: A friendly RAG-enabled assistant that resolves missing information through interactive dialogue.
-
-### 🌍 Multilingual Vision Engine
-A dedicated OCR microservice decoupled for high performance:
-- **Bilingual Support**: Specialized extraction for **English** (PaddleOCR) and **Urdu** (UTRNet/YOLOv8).
-- **Layout Awareness**: Utilizes **Docling** to understand document hierarchy, table structures, and field coordinates.
-- **Pre-processing**: Automatic image enhancement and noise reduction for low-quality uploads.
-
-### 🔄 Interactive Form Workspace
-- **Real-time Sync**: Watch form fields update live as you chat with the AI.
-- **Self-Healing Loop**: The system automatically attempts to verify data 3 times before asking for user intervention.
-- **One-Click Export**: Generate finalized, high-fidelity PDFs once the data is validated.
+**ASAAN FORM** is a next-generation document automation platform that transforms tedious paperwork into a seamless, conversational experience. By combining **Agentic AI Orchestration** with a state-of-the-art **Immersive UI**, Asaan Form automates data extraction, mapping, and validation, allowing users to complete complex applications in minutes.
 
 ---
 
-## 🏗️ Technical Architecture
+## 🚀 The Product Experience
 
-| Component | Responsibility | Stack |
+Asaan Form isn't just a tool; it's a complete document ecosystem designed to handle the friction of administrative tasks.
+
+### 🤖 Intelligent Auto-Fill & Semantic Mapping
+*   **Zero Manual Entry**: Upload your source documents (CNICs, transcripts, certificates) and watch the system automatically extract and map data to any form template.
+*   **Cross-Document Intelligence**: The AI correlates information across multiple files to ensure consistency (e.g., verifying names across a CNIC and a degree).
+*   **Self-Healing Validation**: A multi-agent loop automatically detects and corrects extraction errors before they reach the final document.
+
+### 💬 AI Chatbot Assistant (Sympathetic RAG)
+*   **Contextual Guidance**: Stuck on a field? Chat with our RAG-enabled bot that understands the specific requirements of the form you're filling.
+*   **Missing Data Resolution**: If a document is missing info (like a specific grade), the bot proactively asks you in natural language and updates the form in real-time.
+*   **Multilingual Support**: Intelligent processing for both English and Urdu documents.
+
+### 📊 Dynamic Management Hub (Dashboard)
+*   **Document Vault**: Manage all your uploaded source documents in one place with a clean, deduplicated interface.
+*   **Filled Forms Tracking**: Re-open, update, download, or delete your mapped sessions at any time.
+*   **In-Page Previews**: High-fidelity modal previews for both images and PDFs without ever leaving the dashboard.
+
+### 🎨 Immersive 3D Interface
+*   **Interactive 3D Robot**: A state-of-the-art Spline 3D assistant greets you on the home page, creating an engaging, modern experience.
+*   **Glassmorphism Design**: A premium, responsive UI featuring smooth animations (Framer Motion) and a curated color palette (Asaan Royal & Sky Blue).
+
+---
+
+## 🛠️ The Tech Ecosystem
+
+| Service | Technology | Role |
 | :--- | :--- | :--- |
-| **Frontend** | User Dashboard & Form Viewer | React.js, Redux Toolkit, Tailwind CSS |
-| **Node API** | User Auth, Persistence, WebSocket Proxy | Node.js (Express), MongoDB |
-| **AI Core** | Multi-Agent Orchestration (Brain) | FastAPI, LangChain, LangGraph |
-| **OCR Service** | Vision Processing worker | PaddleOCR, UTRNet, YOLOv8, Docling |
-| **LLM Engine** | Inference Infrastructure | Groq (Llama 3.3) |
+| **Frontend** | React, Redux Toolkit, Framer Motion, Spline 3D | Interactive User Interface & Experience |
+| **Node API** | Node.js, Express, MongoDB (Mongoose) | User Auth, Document CRUD, Persistence |
+| **AI Backend** | Python (FastAPI), LangGraph, LangChain | Multi-Agent Orchestration & Intelligence |
+| **Vision Engine** | PaddleOCR, UTRNet, Docling | Multi-lingual OCR & Layout Analysis |
+| **Vector DB** | Milvus / Zilliz | Contextual Knowledge Base for RAG |
 
 ---
 
-## 🚀 Installation & Setup
+## 🚦 Getting Started (Production Setup)
 
-### 📋 System Prerequisites
-- **Python 3.10+** (Virtual environment recommended)
-- **Node.js 18+**
-- **MongoDB** (Local or Atlas)
-- **Redis** (Optional, for caching)
+Follow these steps to launch the entire Asaan Form ecosystem on your local machine.
 
-### 1. Repository Setup
-```bash
-git clone https://github.com/sanehasiddique/Asaan-Form.git
-cd Asaan-Form
-```
-
-### 2. AI Backend & OCR Strategy
-Detailed setup for the "Brain" of the system:
+### 1. Launch the AI Core (The Brain)
+The AI backend handles agent orchestration and OCR tasks.
 ```bash
 cd ai-backend
+python -m venv venv
+# Windows:
+venv\Scripts\activate
+# Linux/Mac:
+source venv/bin/activate
 
-# Windows
-python -m venv asaan-env-310
-asaan-env-310\Scripts\activate
 pip install -r requirements.txt
-./start.bat
-
-# Linux / MacOS
-python3 -m venv asaan-env-310
-source asaan-env-310/bin/activate
-pip install -r requirements.txt
-chmod +x start.sh && ./start.sh
+./start.bat  # Launches AI API (8000) and OCR (8001)
 ```
 
-### 3. Node.js Middleware
+### 2. Launch the Node API (The Middleware)
+Handles user accounts, file storage, and mapping persistence.
 ```bash
 cd node-backend
 npm install
-
-# Configuration: Create .env based on .env.example
-# Run Service
-npm run dev
+# Ensure your .env has MONGODB_URI and JWT_SECRET
+npm run dev  # Launches on Port 3000
 ```
 
-### 4. Interactive Frontend
+### 3. Launch the Frontend (The Experience)
+The interactive dashboard and 3D home page.
 ```bash
 cd frontend
 npm install
-
-# Launch Development Server
-npm run dev
+npm run dev  # Launches on Port 8080 (or 5173)
 ```
 
 ---
 
-## 🔑 Environment Configuration
+## 🔄 The Product Workflow
 
-| Variable | Description | Value |
-| :--- | :--- | :--- |
-| `GROQ_API_KEY` | LLM Access Key (Llama 3.3) | `your_key_here` |
-| `MONGODB_URI` | Mongo Connection String | `mongodb://...` |
-| `MILVUS_URI` | Vector Database Endpoint | `zilliz_cloud_url` |
-| `AI_BACKEND_URL` | Cross-service communication | `http://localhost:8000` |
-
----
-
-## 🛠️ Performance & Troubleshooting
-
-- **Memory Management**: The OCR service runs on port `8001` to isolate CPU-heavy vision tasks from the main API.
-- **Port Conflicts**: Ensure `8000` (AI API), `8001` (OCR), `3000` (Node), and `5173` (Frontend) are available.
-- **Dependency Issues**: If `paddlex` fails on Windows, refer to the [Setup Guide Patch](docs/setup.md).
+1.  **Onboarding**: Create an account to access your personal document vault.
+2.  **Upload Template**: Upload the form you need to fill (PDF or Image).
+3.  **Provide Context**: Upload your source documents (CNIC, Transcripts, etc.).
+4.  **AI Mapping**: Watch the AI agents extract data and highlight mapped fields in the Workspace.
+5.  **Interactive Refinement**: Chat with the AI assistant to resolve missing fields or edge cases.
+6.  **Export**: Download a high-fidelity, perfectly formatted PDF of your completed form.
 
 ---
 
-## 📚 Documentation
-- [**Detailed Setup Guide**](docs/setup.md): Comprehensive installation steps, environment patching, and OS-specific instructions.
-- [**Requirement Analysis**](docs/requirements.md): Overview of project scope and functional requirements.
+## 📄 License & Product Team
 
----
-
-## 📄 License & Team
-
-Developed with ❤️ for the Final Year Project at **University of the Punjab**.  
+Developed with ❤️ at the **University of the Punjab**.  
 Distributed under the **MIT License**.
 
-- **Saneha Siddique**: Backend Lead & Urdu Engine
-- **Zainab Khalid**: OCR & Semantic Mapping
-- **Faiqa Mustafa**: UX/UI & State Management
-- **Aqsa Hussain**: RAG & Knowledge Base
+**The Visionaries:**
+- **Saneha Siddique**: Backend Lead & AI Integration
+- **Zainab Khalid**: Vision Systems & Semantic Mapping
+- **Faiqa Mustafa**: UX Architect & UI Design
+- **Aqsa Hussain**: Knowledge Engineering & RAG
 
 ---
-© 2026 Asaan-Form Project Team.
+© 2026 Asaan Form. Making complexity simple.

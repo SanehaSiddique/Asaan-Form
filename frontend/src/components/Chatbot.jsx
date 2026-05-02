@@ -106,8 +106,8 @@ const Chatbot = () => {
       if (data.missingFields && data.missingFields.length > 0) {
         setMissingFields(data.missingFields);
         
-        // Notify the user globally via toast
-        toast.warning(`Found ${data.missingCount} missing fields that need your attention!`);
+        // Removed global toast warning to be less intrusive
+        // toast.warning(`Found ${data.missingCount} missing fields that need your attention!`);
 
         // Add a bot message about missing fields
         const fieldList = data.missingFields
@@ -195,10 +195,11 @@ const Chatbot = () => {
       if (updates.length > 0) {
         console.log(`[Chatbot] 🔄 Processing ${updates.length} updates...`);
         
+        let updatedCount = 0;
+        
         updates.forEach(update => {
           if (update.field_key) {
-            // Show confirmation toast for each update
-            toast.success(`Updated ${update.field_key}! ✨`);
+            updatedCount++;
 
             // Remove this field from missing fields list
             setMissingFields((prev) =>
@@ -215,6 +216,10 @@ const Chatbot = () => {
             window.dispatchEvent(event);
           }
         });
+
+        if (updatedCount > 0) {
+          toast.success(`Updated ${updatedCount} field${updatedCount > 1 ? 's' : ''}! ✨`);
+        }
       }
     } catch (error) {
       console.error("Chatbot error:", error);

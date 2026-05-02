@@ -171,6 +171,7 @@ exports.listUserDocuments = async (req, res) => {
         }
 
         const documents = await Document.find({ user: userId })
+            .populate('formId')
             .sort({ createdAt: -1 })
             .lean()
             .exec();
@@ -319,8 +320,16 @@ exports.getFillData = async (req, res) => {
         const userID = document.user.toString();
         const aiFormId = form.formIdAI || formId;
         
-        // Use all user documents for context
-        const allUserDocs = await Document.find({ user: userID }).sort({ createdAt: 1 });
+        // Only use documents relevant to this specific form or general documents
+        const allUserDocs = await Document.find({ 
+            user: userID,
+            $or: [
+                { formId: form._id },
+                { formId: { $exists: false } },
+                { formId: null }
+            ]
+        }).sort({ createdAt: 1 });
+
         const docFilenames = allUserDocs
             .map(d => d.aiFilename)
             .filter(fn => fn && fn.trim().length > 0);
@@ -347,7 +356,58 @@ exports.getFillData = async (req, res) => {
         const formData = new FormData();
         formData.append("user_id", userID);
         formData.append("form_id", aiFormId);
-        formData.append("document_filenames", docFilenames.join(","));
+        
+        // Filter out excluded documents
+        const activeDocs = allUserDocs.filter(d => !d.isExcluded);
+        const activeFilenames = activeDocs
+            .map(d => d.aiFilename)
+            .filter(fn => fn && fn.trim().length > 0);
+            
+        if (activeFilenames.length === 0) {
+            return res.status(400).json({ message: "No active documents found for mapping. Please include at least one document." });
+        }
+
+        // --- NEW: Identity Validation Step ---
+        try {
+            console.log(`[getFillData] Validating identities for: ${activeFilenames.join(",")}`);
+            const valForm = new FormData();
+            valForm.append("user_id", userID);
+            valForm.append("document_filenames", activeFilenames.join(","));
+            
+            const valResponse = await axios.post(`${AI_BACKEND_URL}/fill/validate-identities`, valForm, {
+                headers: valForm.getHeaders(),
+                timeout: 60000
+            });
+            
+            if (valResponse.data?.has_clash) {
+                console.log("[getFillData] ⚠️ Identity clash detected!");
+                
+                // Map AI filenames back to MongoDB IDs for the frontend to use
+                const enrichedClashReport = { ...valResponse.data };
+                if (enrichedClashReport.identities) {
+                    enrichedClashReport.identities = enrichedClashReport.identities.map(identity => ({
+                        ...identity,
+                        documents: identity.documents.map(aiDoc => {
+                            const mongoDoc = allUserDocs.find(d => d.aiFilename === aiDoc.filename);
+                            return {
+                                ...aiDoc,
+                                id: mongoDoc ? mongoDoc._id : null
+                            };
+                        })
+                    }));
+                }
+
+                return res.status(409).json({
+                    message: "Identity clash detected across documents",
+                    clash_report: enrichedClashReport
+                });
+            }
+        } catch (valErr) {
+            console.error("[getFillData] Identity validation warning (skipped):", valErr.message);
+        }
+        // --- End Validation ---
+
+        formData.append("document_filenames", activeFilenames.join(","));
         formData.append("return_pdf", "false");
 
         const aiResponse = await axios.post(`${AI_BACKEND_URL}/fill/fill-existing`, formData, {
@@ -367,7 +427,7 @@ exports.getFillData = async (req, res) => {
             coordinates: f.coordinates || null,
             target_box: f.coordinates || null,
             page_number: f.page_number ?? 1,
-            source_boxes: []
+            source_boxes: f.source_boxes || []
         }));
 
         const finalJson = { form_id: formIdAI || formId, fields };
@@ -409,6 +469,31 @@ exports.updateMapping = async (req, res) => {
 
         res.status(200).json({
             message: "Mapping updated successfully",
+            document: updatedDoc
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Exclude or Include a document from mapping
+exports.toggleDocumentExclusion = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isExcluded } = req.body;
+
+        const updatedDoc = await Document.findByIdAndUpdate(
+            id,
+            { isExcluded: !!isExcluded },
+            { new: true }
+        );
+
+        if (!updatedDoc) {
+            return res.status(404).json({ message: "Document not found" });
+        }
+
+        res.status(200).json({
+            message: `Document ${isExcluded ? 'excluded' : 'included'} successfully`,
             document: updatedDoc
         });
     } catch (error) {
@@ -585,6 +670,44 @@ exports.updateMapping = async (req, res) => {
         });
     } catch (error) {
         console.error("[uploadController] updateMapping error:", error.message);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Delete a form template
+exports.deleteForm = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const form = await Form.findById(id);
+        if (!form) return res.status(404).json({ message: "Form not found" });
+
+        // Delete local file if it exists
+        if (form.filePath && fs.existsSync(form.filePath)) {
+            fs.unlinkSync(form.filePath);
+        }
+
+        await Form.findByIdAndDelete(id);
+        res.status(200).json({ message: "Form template deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Delete a document or filled form instance
+exports.deleteDocument = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const doc = await Document.findById(id);
+        if (!doc) return res.status(404).json({ message: "Document not found" });
+
+        // Delete local file if it exists
+        if (doc.filePath && fs.existsSync(doc.filePath)) {
+            fs.unlinkSync(doc.filePath);
+        }
+
+        await Document.findByIdAndDelete(id);
+        res.status(200).json({ message: "Document deleted successfully" });
+    } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };

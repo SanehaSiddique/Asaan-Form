@@ -8,6 +8,8 @@ import Button from '@/components/Button';
 import Card from '@/components/Card';
 import PageTransition from '@/components/PageTransition';
 
+import Spline from '@splinetool/react-spline';
+
 const Home = () => {
   // Get auth state from Redux store
   const { isAuthenticated } = useSelector((state) => state.auth);
@@ -86,79 +88,143 @@ const Home = () => {
           <div className="floating-shape w-48 h-48 bg-asaan-royal top-1/2 left-1/4" style={{ animationDelay: '-10s' }} />
 
           {/* Gradient Overlay */}
-          <motion.div 
+          <motion.div
             style={{ opacity }}
             className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background pointer-events-none"
           />
 
-          <div className="relative z-10 max-w-7xl mx-auto px-6 text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="mb-6"
-            >
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-asaan-sky/20 border border-asaan-sky/30 text-asaan-royal text-sm font-medium">
-                <Sparkles className="w-4 h-4" />
-                AI-Powered Form Assistant
-              </span>
-            </motion.div>
+          <div className="relative z-10 max-w-7xl mx-auto px-6 w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr,0.8fr] gap-12 items-center text-left">
+              {/* Left Column: Content */}
+              <motion.div
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8 }}
+                className="max-w-2xl"
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                  className="mb-6"
+                >
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-asaan-sky/20 border border-asaan-sky/30 text-asaan-royal text-sm font-medium">
+                    <Sparkles className="w-4 h-4" />
+                    AI-Powered Form Assistant
+                  </span>
+                </motion.div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.1 }}
-              className="font-display text-5xl md:text-7xl lg:text-8xl font-bold mb-6"
-            >
-              <span className="gradient-text">ASAAN</span>{' '}
-              <span className="text-foreground">FORM</span>
-            </motion.h1>
+                <motion.h1
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                  className="font-display text-5xl md:text-7xl lg:text-9xl font-bold mb-6 leading-tight"
+                >
+                  <span className="gradient-text">ASAAN</span>{' '}
+                  <span className="text-foreground">FORM</span>
+                </motion.h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-10"
-            >
-              Your intelligent form assistant that makes filling out forms
-              <span className="text-asaan-royal font-medium"> effortless and accurate</span>.
-            </motion.p>
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.4 }}
+                  className="text-xl md:text-2xl text-muted-foreground mb-10"
+                >
+                  Your intelligent form assistant that makes filling out forms
+                  <span className="text-asaan-royal font-medium"> effortless and accurate</span>.
+                </motion.p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
-            >
-              <Link to={isAuthenticated ? '/upload-form' : '/signup'}>
-                <Button size="lg" icon={<ArrowRight className="w-5 h-5" />} iconPosition="right">
-                  Get Started
-                </Button>
-              </Link>
-              <Link to={isAuthenticated ? '/upload-form' : '/login'}>
-                <Button size="lg" variant="outline" icon={<Upload className="w-5 h-5" />}>
-                  Upload Form
-                </Button>
-              </Link>
-            </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                  className="flex flex-col sm:flex-row gap-4"
+                >
+                  <Link to={isAuthenticated ? '/upload-form' : '/signup'}>
+                    <Button size="lg" icon={<ArrowRight className="w-5 h-5" />} iconPosition="right">
+                      Get Started
+                    </Button>
+                  </Link>
+                  <Link to={isAuthenticated ? '/upload-form' : '/login'}>
+                    <Button size="lg" variant="outline" icon={<Upload className="w-5 h-5" />}>
+                      Upload Form
+                    </Button>
+                  </Link>
+                </motion.div>
+              </motion.div>
+
+              {/* Right Column: Spline Robot */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 1.2, delay: 0.4 }}
+                className="relative h-[450px] md:h-[650px] w-full translate-x-12 lg:translate-x-24 overflow-hidden rounded-[3rem]"
+              >
+                <Spline 
+                  scene="https://prod.spline.design/fHFaN7ERXylH7lBe/scene.splinecode" 
+                  className="relative z-10 pointer-events-auto"
+                  style={{ height: '125%', width: '100%', marginTop: '-5%' }}
+                  onLoad={(splineApp) => {
+                    // 1. Force background transparency
+                    if (splineApp) {
+                      if (splineApp.setBackgroundColor) splineApp.setBackgroundColor('transparent');
+                      else if (splineApp.setClearColor) splineApp.setClearColor(0, 0, 0, 0);
+                    }
+
+                    // 2. Aggressively find and remove the watermark/logo (including Shadow DOM)
+                    const removeWatermark = () => {
+                      const selectors = [
+                        '#spline-watermark', 
+                        '#spline-logo', 
+                        'a[href*="spline.design"]',
+                        'div[style*="z-index: 10000"]'
+                      ];
+                      
+                      const findAndRemove = (root) => {
+                        selectors.forEach(selector => {
+                          const elements = root.querySelectorAll ? root.querySelectorAll(selector) : [];
+                          elements.forEach(el => el.remove());
+                        });
+                        
+                        const allElements = root.querySelectorAll ? root.querySelectorAll('*') : [];
+                        allElements.forEach(el => {
+                          if (el.shadowRoot) findAndRemove(el.shadowRoot);
+                        });
+                      };
+
+                      findAndRemove(document);
+                    };
+
+                    removeWatermark();
+                    const observer = new MutationObserver(removeWatermark);
+                    observer.observe(document.body, { childList: true, subtree: true });
+                  }}
+                />
+              </motion.div>
+            </div>
 
             {/* Stats */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.5 }}
-              className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6"
+              transition={{ duration: 0.8, delay: 0.7 }}
+              className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-6"
             >
-              {[{ value: '10K+', label: 'Forms Processed' }, { value: '95%', label: 'Accuracy Rate' }, { value: '5min', label: 'Avg. Time Saved' }, { value: '24/7', label: 'AI Available' }].map((stat, index) => (
+              {[
+                { value: '10K+', label: 'Forms Processed' },
+                { value: '95%', label: 'Accuracy Rate' },
+                { value: '5min', label: 'Avg. Time Saved' },
+                { value: '24/7', label: 'AI Available' }
+              ].map((stat, index) => (
                 <motion.div
                   key={stat.label}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.6 + index * 0.1 }}
-                  className="text-center"
+                  transition={{ delay: 0.8 + index * 0.1 }}
+                  className="text-center bg-white/40 backdrop-blur-sm p-6 rounded-3xl border border-white/60 shadow-sm"
                 >
                   <div className="text-3xl md:text-4xl font-bold gradient-text">{stat.value}</div>
-                  <div className="text-sm text-muted-foreground">{stat.label}</div>
+                  <div className="text-sm text-muted-foreground uppercase tracking-wider mt-1">{stat.label}</div>
                 </motion.div>
               ))}
             </motion.div>

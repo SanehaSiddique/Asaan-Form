@@ -62,9 +62,9 @@ const Navbar = () => {
               <motion.div
                 whileHover={{ rotate: 10, scale: 1.1 }}
                 transition={{ type: "spring", stiffness: 400 }}
-                className="w-10 h-10 rounded-xl bg-gradient-to-br from-asaan-sky to-asaan-royal flex items-center justify-center"
+                className="w-10 h-10 rounded-xl overflow-hidden"
               >
-                <FileText className="w-5 h-5 text-white" />
+                <img src="/favicon.png" alt="ASAAN FORM Logo" className="w-full h-full object-cover" />
               </motion.div>
               <span className="font-display font-bold text-xl gradient-text">
                 ASAAN FORM

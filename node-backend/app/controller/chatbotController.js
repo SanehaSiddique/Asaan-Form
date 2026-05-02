@@ -55,7 +55,7 @@ exports.askChatbot = async (req, res) => {
                     fileName: doc.fileName,
                     filled_fields: (doc.semanticMapping || [])
                         .filter(m => m.value != null && m.value !== "")
-                        .map(m => ({ field: m.field_name, value: m.value }))
+                        .map(m => ({ field: m.field_name, field_key: m.field_key, value: m.value }))
                 };
             }
         } else if (formId) {
@@ -76,7 +76,7 @@ exports.askChatbot = async (req, res) => {
                     fileName: doc.fileName,
                     filled_fields: (doc.semanticMapping || [])
                         .filter(m => m.value != null && m.value !== "")
-                        .map(m => ({ field: m.field_name, value: m.value }))
+                        .map(m => ({ field: m.field_name, field_key: m.field_key, value: m.value }))
                 };
             }
         }
