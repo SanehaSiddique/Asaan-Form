@@ -123,7 +123,7 @@ const DocumentClashModal = ({ isOpen, onClose, clashReport, onResolved }) => {
                 <DialogFooter className="p-6 bg-gray-50/50 border-t border-gray-100">
                     <div className="flex items-center justify-between w-full">
                         <p className="text-[10px] text-muted-foreground font-medium max-w-[300px]">
-                            Excluded documents will not be deleted, but they won't be used to fill this form.
+                            Selected documents will be excluded and we will not use them as part of semantic mapping.
                         </p>
                         <div className="flex gap-3">
                             <Button variant="outline" onClick={onClose} size="sm">Cancel</Button>

@@ -127,9 +127,12 @@ const FormWorkspace = () => {
                 // Prefer fill-data from AI (same as overlay PDF) so React form and overlays match the filled PDF
                 let fillDataFields = [];
                 try {
-                    const fillRes = await API.get(`upload/form/${formId}/document/${documentId}/fill-data`);
+                    const params = new URLSearchParams(window.location.search);
+                    const ignoreClash = params.get('ignoreClash') === 'true';
+                    const fillRes = await API.get(`upload/form/${formId}/document/${documentId}/fill-data${ignoreClash ? '?ignoreClash=true' : ''}`);
                     fillDataFields = fillRes.data?.fields || fillRes.data?.final_json?.fields || [];
                 } catch (fillErr) {
+                    if (fillErr.response?.status === 409) throw fillErr;
                     console.warn("Fill-data not available, using stored mapping:", fillErr?.message);
                 }
                 if (fillDataFields.length === 0) {
@@ -233,8 +236,10 @@ const FormWorkspace = () => {
             
             toast.success("Document exclusions updated. Re-mapping...");
             
-            // Re-trigger the fetchData logic by reloading the page or manually calling the fetch
-            window.location.reload(); 
+            // Add ignoreClash to URL and reload so we bypass clash check
+            const url = new URL(window.location.href);
+            url.searchParams.set('ignoreClash', 'true');
+            window.location.href = url.toString(); 
         } catch (error) {
             console.error("Error resolving clash:", error);
             toast.error("Failed to update document exclusions");
